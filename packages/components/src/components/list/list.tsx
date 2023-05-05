@@ -28,7 +28,7 @@ export const List = React.forwardRef(({
   data,
   renderItem,
   ...resetProps
-}: IListProps) => {
+}: IListProps, ref: React.Ref<HTMLDivElement>) => {
   const renderInnerItem = (d: string | IListItemProps, index: number) => {
     return renderItem ? renderItem(d, index) :
       typeof d === 'string' ? <ListItem key={index}>{d}</ListItem> : <ListItem key={index} {...d}/>;
