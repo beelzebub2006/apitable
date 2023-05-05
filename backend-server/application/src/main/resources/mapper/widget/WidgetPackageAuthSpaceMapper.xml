@@ -1,8 +1,4 @@
-<<<<<<<< HEAD:init-db/src/main/resources/db/changelog/0.10/20220217_changeset.xml
-<?xml version="1.1" encoding="UTF-8" standalone="no"?>
-========
 <?xml version="1.0" encoding="UTF-8" ?>
->>>>>>>> remote/develop:backend-server/application/src/main/resources/mapper/widget/WidgetPackageAuthSpaceMapper.xml
 <!--
  APITable <https://github.com/apitable/apitable>
  Copyright (C) 2022 APITable Ltd. <https://apitable.com>
@@ -21,21 +17,6 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
 
-<<<<<<<< HEAD:init-db/src/main/resources/db/changelog/0.10/20220217_changeset.xml
-<databaseChangeLog
-        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-    <changeSet id="V0.10-20220217-001" author="Pengap" labels="widget">
-        <comment>Widget Package Table add sandbox field</comment>
-        <sql>
-            ALTER TABLE `${table.prefix}widget_package`
-            ADD COLUMN `sandbox` tinyint(1) NULL COMMENT 'Whether the sandbox runs (0: No, 1: Yes)' AFTER `widget_body`;
-        </sql>
-    </changeSet>
-</databaseChangeLog>
-========
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
 <mapper namespace="com.apitable.widget.mapper.WidgetPackageAuthSpaceMapper">
     <select id="selectSpaceIdByPackageId" resultType="java.lang.String">
@@ -47,4 +28,3 @@
     </select>
 
 </mapper>
->>>>>>>> remote/develop:backend-server/application/src/main/resources/mapper/widget/WidgetPackageAuthSpaceMapper.xml

@@ -16,28 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-<<<<<<<< HEAD:backend-server/application/src/main/java/com/apitable/widget/vo/WidgetStoreListExtraInfo.java
-package com.apitable.widget.vo;
-========
 package com.apitable.auth.ro;
->>>>>>>> remote/develop:backend-server/application/src/main/java/com/apitable/auth/ro/RegisterRO.java
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
-<<<<<<<< HEAD:backend-server/application/src/main/java/com/apitable/widget/vo/WidgetStoreListExtraInfo.java
- * <p>
- * Widget Store List Extended Information View
- * </p>
- */
-@Data
-@ApiModel("Widget Store List Extended Information View")
-public class WidgetStoreListExtraInfo {
-
-    @ApiModelProperty(value = "Widget official website address", position = 1)
-    private String website;
-========
  * Login Request Parameters.
  *
  * @author Chambers
@@ -49,7 +33,6 @@ public class RegisterRO {
     @Schema(description = "Username(email/telephone...)",
         example = "xxxx@apitable.com", required = true)
     private String username;
->>>>>>>> remote/develop:backend-server/application/src/main/java/com/apitable/auth/ro/RegisterRO.java
 
     @Schema(description = "Credential(password/verify code...)",
         example = "qwer1234 || 261527", required = true)

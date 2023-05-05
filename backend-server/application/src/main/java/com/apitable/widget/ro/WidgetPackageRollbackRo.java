@@ -17,14 +17,6 @@
  */
 
 package com.apitable.widget.ro;
-<<<<<<<< HEAD:backend-server/application/src/main/java/com/apitable/widget/ro/WidgetCopyRo.java
-
-import java.util.List;
-
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotEmpty;
-========
->>>>>>>> remote/develop:backend-server/application/src/main/java/com/apitable/widget/ro/WidgetPackageRollbackRo.java
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import javax.validation.constraints.NotBlank;
@@ -32,18 +24,6 @@ import lombok.Data;
 
 /**
  * <p>
-<<<<<<<< HEAD:backend-server/application/src/main/java/com/apitable/widget/ro/WidgetCopyRo.java
- * Widget Copy Request Parameters
- * </p>
- */
-@Data
-@ApiModel("Widget Copy Request Parameters")
-public class WidgetCopyRo {
-
-    @ApiModelProperty(value = "Dashboard ID", required = true, example = "dsb11", position = 1)
-    @NotBlank(message = "Dashboard ID cannot be empty")
-    private String dashboardId;
-========
  * Widget rollback request parameters.
  * </p>
  */
@@ -58,9 +38,5 @@ public class WidgetPackageRollbackRo {
     @Schema(description = "Version No", example = "1.0.0")
     @NotBlank(message = "Rollback version number cannot be empty")
     private String version;
->>>>>>>> remote/develop:backend-server/application/src/main/java/com/apitable/widget/ro/WidgetPackageRollbackRo.java
 
-    @ApiModelProperty(value = "Widget ID List", required = true, example = "[\"wdtiJjVmNFcFmNtQFA\", \"wdtSbp8TkH7gTGAYR1\"]", position = 2)
-    @NotEmpty(message = "Widget ID list cannot be empty")
-    private List<String> widgetIds;
 }
