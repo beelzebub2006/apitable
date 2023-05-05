@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import { useShowViewLockModal } from 'pc/components/view_lock/use_show_view_lock_modal';
 import * as React from 'react';
 import styles from '../style.module.less';
 import { FieldType, FilterDuration, FOperator, IFilterCondition, Strings, t } from '@apitable/core';
@@ -25,6 +26,7 @@ import { MobileSelect } from 'pc/components/common';
 import { useResponsive } from 'pc/hooks';
 import { ScreenSize } from 'pc/components/common/component_display';
 import { Select, useThemeColors } from '@apitable/components';
+// @ts-ignore
 import { snake } from 'naming-style';
 
 export const DateDuration = [
@@ -42,11 +44,12 @@ interface IFilterDateDurationProps {
   condition: IFilterCondition<FieldType>;
 }
 
-export const FilterDateDuration: React.FC<IFilterDateDurationProps> = props => {
+export const FilterDateDuration: React.FC<React.PropsWithChildren<IFilterDateDurationProps>> = props => {
   const { conditionIndex, condition, changeFilter } = props;
   const colors = useThemeColors();
   const { screenIsAtMost } = useResponsive();
   const isMobile = screenIsAtMost(ScreenSize.md);
+  const isViewLock = useShowViewLockModal();
 
   function createOptionData() {
     const operate = condition.operator;
@@ -92,6 +95,7 @@ export const FilterDateDuration: React.FC<IFilterDateDurationProps> = props => {
         defaultValue={!condition.value ? '' : condition.value[0]}
         optionData={createOptionData()}
         title={t(Strings.please_choose)}
+        disabled={isViewLock}
         style={{
           background: colors.lowestBg,
           justifyContent: 'space-between',
@@ -115,6 +119,8 @@ export const FilterDateDuration: React.FC<IFilterDateDurationProps> = props => {
       dropdownMatchSelectWidth={false}
       openSearch={false}
       triggerStyle={{ width: 100 }}
+      disabled={isViewLock}
+      disabledTip={'123'}
     />
   );
 };

@@ -16,20 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {
-  FieldType,
-  FOperator,
-  integrateCdnHost,
-  IUnitValue,
-  MemberType,
-  OtherTypeUnitId,
-  Settings,
-  Strings,
-  t
-} from '@apitable/core';
+import { FieldType, FOperator, integrateCdnHost, IUnitValue, MemberType, OtherTypeUnitId, Settings, Strings, t } from '@apitable/core';
 import { memberStash } from 'modules/space/member_stash/member_stash';
-import { useEffect, useMemo, useState } from 'react';
 import * as React from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { IFilterMemberProps } from '../interface';
 import { FilterGeneralSelect } from './filter_general_select';
 
@@ -39,7 +29,7 @@ interface IExFilterMemberProps extends IFilterMemberProps {
   hiddenClientOption?: boolean;
 }
 
-export const FilterMember: React.FC<IExFilterMemberProps> = props => {
+export const FilterMember: React.FC<React.PropsWithChildren<IExFilterMemberProps>> = props => {
   const { field, condition, onChange, hiddenClientOption } = props;
   const [isMulti, setIsMulti] = useState(false);
   const fieldType = condition.fieldType;

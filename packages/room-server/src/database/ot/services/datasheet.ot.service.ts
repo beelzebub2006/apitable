@@ -18,9 +18,10 @@
 
 import {
   CollaCommandName, Field, FieldType, IAttachmentValue, IComments, IField, IFieldMap, IFieldUpdatedMap, IJOTAction, IMeta, INodePermissions,
-  IObjectDeleteAction, IObjectInsertAction, IObjectReplaceAction, IOperation, IRecord, IRecordAlarm, IRecordCellValue, IRecordMeta, IReduxState,
+  IObjectDeleteAction, IObjectInsertAction, IObjectReplaceAction, IOperation, IRecord, IRecordAlarm, IRecordCellValue, IRecordMap, IRecordMeta, IReduxState,
   IRemoteChangeset, isSameSet, IViewProperty, jot, OTActionName, ViewType,
 } from '@apitable/core';
+import { Span } from '@metinseylan/nestjs-opentelemetry';
 import { Injectable } from '@nestjs/common';
 import * as Sentry from '@sentry/node';
 import { DatasheetRecordAlarmBaseService } from 'database/alarm/datasheet.record.alarm.base.service';
@@ -38,7 +39,6 @@ import { EntityManager } from 'typeorm';
 import { Logger } from 'winston';
 import { DatasheetChangesetEntity } from '../../datasheet/entities/datasheet.changeset.entity';
 import { WidgetEntity } from '../../widget/entities/widget.entity';
-import { RecordMap } from '../../interfaces';
 import { WidgetService } from '../../widget/services/widget.service';
 import { DatasheetEntity } from 'database/datasheet/entities/datasheet.entity';
 import { DatasheetMetaEntity } from 'database/datasheet/entities/datasheet.meta.entity';
@@ -142,22 +142,15 @@ export class DatasheetOtService {
       toDeleteAlarms: new Map<string, IRecordAlarm[]>(),
       updatedAlarmIds: [],
       addViews: [],
+      deleteViews: [],
+      spaceId: ''
     };
   }
 
   /**
-   * @description Analyze Operation, apply special handling accordingly
-   * @param spaceId
-   * @param operation
-   * @param datasheetId
-   * @param permission
-   * @param cookie
-   * @param token
-   * @param getNodeRole
-   * @param effectMap
-   * @param resultSet
-   * @returns
+   * Analyze Operation, apply special handling accordingly
    */
+  @Span()
   async analyseOperates(
     spaceId: string,
     mainDatasheetId: string,
@@ -170,6 +163,7 @@ export class DatasheetOtService {
     auth: IAuthHeader,
     sourceType?: SourceTypeEnum,
   ) {
+    resultSet.spaceId = spaceId;
     resultSet.datasheetId = datasheetId;
     resultSet.auth = auth;
     resultSet.sourceType = sourceType;
@@ -182,7 +176,6 @@ export class DatasheetOtService {
     resultSet.temporaryViews = meta.views;
     for (const { mainLinkDstId } of operation) {
       const _condition = mainLinkDstId || mainDatasheetId;
-      this.logger.info(`Related data of current operation misses mainLinkDstId: ${datasheetId}`);
       const condition = auth.internal || datasheetId === _condition || sourceType === SourceTypeEnum.FORM;
       const mainDstPermission = condition ? permission : await getNodeRole(_condition, auth);
       resultSet.mainLinkDstPermissionMap.set(_condition, mainDstPermission);
@@ -412,6 +405,7 @@ export class DatasheetOtService {
         }
       }
     }
+
     // Validate cell operations without edit permission, if is operation related to linking
     if (resultSet.fldOpInRecMap.size > 0) {
       for (const [fieldId, cmd] of resultSet.fldOpInRecMap.entries()) {
@@ -442,6 +436,7 @@ export class DatasheetOtService {
         }
       }
     }
+
     // Not undo operation, create LookUp requires permission above readable of linked datasheet.
     // If the target field set field permission, permission above readable of this field is also required.
     if (resultSet.toCreateLookUpProperties.length > 0) {
@@ -756,6 +751,7 @@ export class DatasheetOtService {
           if (!permission.viewRemovable || view?.lockInfo) {
             throw new ServerException(PermissionException.OPERATION_DENIED);
           }
+          resultSet.deleteViews.push(action['ld']);
           return;
         }
         // ====== Move view ======
@@ -770,6 +766,12 @@ export class DatasheetOtService {
           case 'name':
             // ====== View rename ======
             if (!permission.viewRenamable) {
+              throw new ServerException(PermissionException.OPERATION_DENIED);
+            }
+            return;
+          case 'displayHiddenColumnWithinMirror':
+            // ====== View displayHiddenColumnWithinMirror ======
+            if (!permission.editable || view?.lockInfo) {
               throw new ServerException(PermissionException.OPERATION_DENIED);
             }
             return;
@@ -928,7 +930,7 @@ export class DatasheetOtService {
       }
     } else {
       // Operations on linked datasheet, requires editable permission
-      if (permission.editable) {
+      if (permission.editable || ('li' in action && permission.rowCreatable)) {
         return;
       }
       // If no, maybe this datasheet delete linking fields two-way or undo this operation, causing
@@ -1716,6 +1718,14 @@ export class DatasheetOtService {
       if (!recordMetaMap[recordId] && !oldRecord?.recordMeta) {
         const recordAction = DatasheetOtService.generateJotAction(OTActionName.ObjectInsert, ['recordMap', recordId, 'recordMeta'], newRecordMeta);
         recordMapActions.push(recordAction);
+      } else if (!recordMetaMap[recordId] && oldRecord?.recordMeta && !oldRecord?.recordMeta.fieldUpdatedMap) {
+        // fix: https://github.com/vikadata/vikadata/issues/4628
+        const recordAction = DatasheetOtService.generateJotAction(
+          OTActionName.ObjectInsert,
+          ['recordMap', recordId, 'recordMeta', 'fieldUpdatedMap'],
+          {},
+        );
+        recordMapActions.push(recordAction);
       } else {
         const recordAction = DatasheetOtService.generateJotAction(
           OTActionName.ObjectReplace,
@@ -2127,7 +2137,7 @@ export class DatasheetOtService {
       }
 
       // The view contains records
-      const prevRecordMap: RecordMap = await this.recordService.getRecordsByDstIdAndRecordIds(dstId, recordIds);
+      const prevRecordMap: IRecordMap = await this.recordService.getRecordsByDstIdAndRecordIds(dstId, recordIds);
       const recordMetaMap: Map<string, IRecordMeta> = effectMap.get(EffectConstantName.RecordMetaMap);
       const recordIdMap = new Map<string, number>();
       let nextId = 1;
@@ -2303,7 +2313,7 @@ export class DatasheetOtService {
    * @param dstId datasheet ID
    * @param effectMap effect variable collection
    */
-  private async getMetaDataByCache(dstId: string, effectMap: Map<string, any>): Promise<IMeta> {
+  async getMetaDataByCache(dstId: string, effectMap: Map<string, any>): Promise<IMeta> {
     if (effectMap.has(EffectConstantName.Meta)) {
       return effectMap.get(EffectConstantName.Meta);
     }

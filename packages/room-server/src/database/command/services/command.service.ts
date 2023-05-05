@@ -17,16 +17,33 @@
  */
 
 import {
-  CollaCommandManager, DEFAULT_EDITOR_PERMISSION, ExecuteResult, ICollaCommandExecuteResult, ICollaCommandOptions, IError, ILocalChangeset, INodeMeta,
-  IReduxState, IResourceOpsCollect, IServerDatasheetPack, ISnapshot, IUnitValue, IUserInfo, IUserValue, Reducers, resourceOpsToChangesets,
+  CollaCommandManager,
+  DEFAULT_EDITOR_PERMISSION,
+  ExecuteResult,
+  ICollaCommandExecuteResult,
+  ICollaCommandOptions,
+  IError,
+  ILocalChangeset,
+  INodeMeta,
+  IReduxState,
+  IResourceOpsCollect,
+  IServerDatasheetPack,
+  ISnapshot,
+  IUnitValue,
+  IUserInfo,
+  IUserValue,
+  IWidget,
+  Reducers,
+  resourceOpsToChangesets,
   StoreActions,
 } from '@apitable/core';
 import { Injectable } from '@nestjs/common';
+import { DashboardDataPack } from 'database/interfaces';
 import { applyMiddleware, createStore, Store } from 'redux';
 import { batchDispatchMiddleware } from 'redux-batched-actions';
 import thunkMiddleware from 'redux-thunk';
-import { Logger } from 'winston';
 import { InjectLogger } from 'shared/common';
+import { Logger } from 'winston';
 
 /**
  * @author Zoe zheng
@@ -34,7 +51,8 @@ import { InjectLogger } from 'shared/common';
  */
 @Injectable()
 export class CommandService {
-  constructor(@InjectLogger() private readonly logger: Logger) {}
+  constructor(@InjectLogger() private readonly logger: Logger) {
+  }
 
   fullFillStore(datasheetPack: IServerDatasheetPack, userInfo?: IUserInfo): Store<IReduxState> {
     const store = createStore<IReduxState, any, unknown, unknown>(Reducers.rootReducers, applyMiddleware(thunkMiddleware, batchDispatchMiddleware));
@@ -50,7 +68,7 @@ export class CommandService {
         // Don't check linked datasheet, linked datasheet should be set to connected, or linked data can not be written
         store.dispatch(StoreActions.setDatasheetConnected(dstId));
         const dataPack = datasheetPack.foreignDatasheetMap![dstId]!;
-        store.dispatch(StoreActions.receiveDataPack(dataPack, true));
+        store.dispatch(StoreActions.receiveDataPack(dataPack, { isPartOfData: true, fixConsistency: false }));
         dataPack.fieldPermissionMap && store.dispatch(StoreActions.loadFieldPermissionMap(dataPack.fieldPermissionMap, dstId));
       });
     }
@@ -68,7 +86,7 @@ export class CommandService {
       store.dispatch(StoreActions.loadFieldPermissionMap(datasheetPack.fieldPermissionMap, datasheetPack.datasheet.id));
     }
     store.dispatch(StoreActions.setDatasheetConnected(datasheetPack.datasheet.id));
-    store.dispatch(StoreActions.receiveDataPack(datasheetPack));
+    store.dispatch(StoreActions.receiveDataPack(datasheetPack, { fixConsistency: false }));
 
     // Fill current user info, relates to personal filtering
     if (userInfo) {
@@ -86,7 +104,7 @@ export class CommandService {
           // Don't check linked datasheet, linked datasheet should be set to connected, or linked data can not be written
           store.dispatch(StoreActions.setDatasheetConnected(dstId));
           const dataPack = datasheetPack.foreignDatasheetMap![dstId]!;
-          store.dispatch(StoreActions.receiveDataPack(dataPack, true));
+          store.dispatch(StoreActions.receiveDataPack(dataPack, { isPartOfData: true, fixConsistency: false }));
         });
       }
       if (datasheetPack.units) {
@@ -100,7 +118,7 @@ export class CommandService {
         store.dispatch(StoreActions.updateUserMap(userMap));
       }
       store.dispatch(StoreActions.setDatasheetConnected(datasheetPack.datasheet.id));
-      store.dispatch(StoreActions.receiveDataPack(datasheetPack, true));
+      store.dispatch(StoreActions.receiveDataPack(datasheetPack, { isPartOfData: true, fixConsistency: false }));
     });
     // const state = store.getState();
     // this.logger.debug('fillTinyStore.state', state);
@@ -114,8 +132,24 @@ export class CommandService {
       if (!datasheet.permissions) {
         datasheet.permissions = DEFAULT_EDITOR_PERMISSION;
       }
-      store.dispatch(store.dispatch(StoreActions.receiveDataPack({ datasheet: pack.datasheet, snapshot: pack.snapshot }, true)));
+      store.dispatch(
+        store.dispatch(
+          StoreActions.receiveDataPack({ datasheet: pack.datasheet, snapshot: pack.snapshot }, { isPartOfData: true, fixConsistency: false }),
+        ),
+      );
     });
+    return store;
+  }
+
+  fillDashboardStore(payload: DashboardDataPack): Store<IReduxState> {
+    const store = createStore<IReduxState, any, unknown, unknown>(Reducers.rootReducers, applyMiddleware(thunkMiddleware, batchDispatchMiddleware));
+    store.dispatch(StoreActions.setDashboard(payload.dashboard, payload.dashboard.id));
+    store.dispatch(StoreActions.setPageParams({ dashboardId: payload.dashboard.id }));
+    return store;
+  }
+
+  setWidgetInstalled(widget: IWidget, store: Store<IReduxState>) {
+    store.dispatch(StoreActions.receiveInstallationWidget(widget.id, widget));
     return store;
   }
 

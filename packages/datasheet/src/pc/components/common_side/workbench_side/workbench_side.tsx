@@ -16,21 +16,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { IconButton, Typography, useContextMenu, useThemeColors } from '@apitable/components';
+import { IconButton, LinkButton, Radio, RadioGroup, useContextMenu, useThemeColors } from '@apitable/components';
 import {
-  ConfigConstant, IReduxState, IRightClickInfo, isIdassPrivateDeployment, Navigation, Selectors, shallowEqual, StoreActions, Strings, t,
+  ConfigConstant, IReduxState, IRightClickInfo, isIdassPrivateDeployment, Navigation, Selectors, shallowEqual, StoreActions, Strings, t, TrackEvents,
   WORKBENCH_SIDE_ID,
 } from '@apitable/core';
-import { AddOutlined, FavoriteFilled, SearchOutlined, TitleWorkFilled } from '@apitable/icons';
-import { Collapse } from 'antd';
-import classnames from 'classnames';
+import {
+  SearchOutlined, UserAddOutlined, DeleteOutlined, PlanetOutlined, AddOutlined, ImportOutlined, FolderAddOutlined,
+} from '@apitable/icons';
 import { ShortcutActionManager, ShortcutActionName } from 'modules/shared/shortcut_key';
 import { GenerateTemplate } from 'pc/components/catalog/generate_template';
 import { ImportFile } from 'pc/components/catalog/import_file';
 import { MoveTo } from 'pc/components/catalog/move_to';
 import { NodeContextMenu } from 'pc/components/catalog/node_context_menu';
 import { PermissionSettingsPlus } from 'pc/components/catalog/permission_settings_plus';
-import { Search } from 'pc/components/catalog/search';
+import { expandSearch } from 'pc/components/quick_search';
 import { Share } from 'pc/components/catalog/share';
 import { Modal } from 'pc/components/common';
 import { ScreenSize } from 'pc/components/common/component_display';
@@ -46,30 +46,26 @@ import { stopPropagation } from 'pc/utils';
 import * as React from 'react';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
-import InviteIcon from 'static/icon/common/common_icon_invite.svg';
-import ArrowIcon from 'static/icon/common/common_icon_up_line.svg';
-import TrashIcon from 'static/icon/workbench/catalogue/recycle_closed.svg';
-import TemplateIcon from 'static/icon/workbench/catalogue/template.svg';
 import { Catalog } from '../../catalog';
 import { Favorite } from './favorite';
 import { SpaceInfo } from './space-info';
 import styles from './style.module.less';
 import { WorkbenchSideContext } from './workbench_side_context';
-
-const { Panel } = Collapse;
+import { usePostHog } from 'posthog-js/react';
+import { useCatalog } from 'pc/hooks/use_catalog';
 
 export interface IDatasheetPanelInfo {
   folderId: string;
   datasheetId?: string;
 }
 
-export const WorkbenchSide: FC = () => {
+export const WorkbenchSide: FC<React.PropsWithChildren<unknown>> = () => {
   const colors = useThemeColors();
   const [rightClickInfo, setRightClickInfo] = useState<IRightClickInfo | null>(null);
   const { contextMenu, onSetContextMenu, onCancelContextMenu } = useContextMenu();
-  const [activeKey, setActiveKey] = useState<string[]>([]);
-  const [isSearch, setIsSearch] = useState(false);
+  const [activeKey, setActiveKey] = useState<string>('');
   const { panelVisible, panelInfo, onChange, setPanelInfo, setPanelVisible } = useSearchPanel();
+  const { addTreeNode } = useCatalog();
   const {
     spaceId,
     treeNodesMap,
@@ -111,6 +107,7 @@ export const WorkbenchSide: FC = () => {
   const { screenIsAtMost } = useResponsive();
   const isMobile = screenIsAtMost(ScreenSize.md);
   const dispatch = useAppDispatch();
+  const posthog = usePostHog();
 
   const userInfo = useSelector(state => state.user.info);
   const spaceFeatures = useSelector(state => state.space.spaceFeatures);
@@ -136,12 +133,6 @@ export const WorkbenchSide: FC = () => {
         ShortcutActionName.SaveAsTemplate,
         () => {
           dispatch(StoreActions.updateSaveAsTemplateModalNodeId(activeNodeId || ''));
-        },
-      ],
-      [
-        ShortcutActionName.SearchNode,
-        () => {
-          setIsSearch(!isSearch);
         },
       ],
     ]);
@@ -193,7 +184,7 @@ export const WorkbenchSide: FC = () => {
 
   useEffect(() => {
     const defaultActiveKeyString = localStorage.getItem('vika_workbench_active_key');
-    const defaultActiveKey = defaultActiveKeyString ? JSON.parse(defaultActiveKeyString) : [ConfigConstant.Modules.CATALOG];
+    const defaultActiveKey = defaultActiveKeyString ? JSON.parse(defaultActiveKeyString) : ConfigConstant.Modules.CATALOG;
     setActiveKey(defaultActiveKey);
   }, []);
 
@@ -204,7 +195,7 @@ export const WorkbenchSide: FC = () => {
     // eslint-disable-next-line
   }, [loading, activeNodeId]);
 
-  const changeHandler = key => {
+  const changeHandler = (key: string) => {
     setActiveKey(key);
     localStorage.setItem('vika_workbench_active_key', JSON.stringify(key));
   };
@@ -228,25 +219,28 @@ export const WorkbenchSide: FC = () => {
       id: rootId,
       module: ConfigConstant.Modules.CATALOG,
       contextMenuType: ConfigConstant.ContextMenuType.DEFAULT,
-      level: '0', 
+      level: '0',
     });
     onSetContextMenu(e);
   };
 
-  const openDatasheetPanel = (visible, info) => {
+  const openDatasheetPanel = (visible: boolean, info: {
+    folderId: string;
+    datasheetId?: string;
+  }) => {
     setPanelVisible(visible);
     setPanelInfo(info);
   };
 
   const openCatalog = () => {
     if (!activeKey.includes(ConfigConstant.Modules.CATALOG)) {
-      changeHandler([...activeKey, ConfigConstant.Modules.CATALOG]);
+      changeHandler(ConfigConstant.Modules.CATALOG);
     }
   };
 
   const openFavorite = () => {
     if (!activeKey.includes(ConfigConstant.Modules.FAVORITE)) {
-      changeHandler([...activeKey, ConfigConstant.Modules.FAVORITE]);
+      changeHandler(ConfigConstant.Modules.FAVORITE);
     }
   };
 
@@ -280,19 +274,15 @@ export const WorkbenchSide: FC = () => {
         <div className={styles.header}>
           <SpaceInfo />
           <div className={styles.search}>
-            {isSearch ? (
-              <Search closeSearch={() => setIsSearch(false)} />
-            ) : (
-              <IconButton
-                shape='square'
-                className={styles.searchBtn}
-                icon={SearchOutlined}
-                onClick={e => {
-                  stopPropagation(e);
-                  setIsSearch(true);
-                }}
-              />
-            )}
+            <IconButton
+              shape='square'
+              className={styles.searchBtn}
+              icon={SearchOutlined}
+              onClick={e => {
+                stopPropagation(e);
+                expandSearch();
+              }}
+            />
           </div>
         </div>
 
@@ -303,76 +293,99 @@ export const WorkbenchSide: FC = () => {
           }}
         >
           <div className={styles.mainContainer} id={WORKBENCH_SIDE_ID.NODE_WRAPPER}>
-            <Collapse className={styles.collapse} onChange={changeHandler} activeKey={activeKey} ghost>
-              <Panel
-                className={styles.favorite}
-                key={ConfigConstant.Modules.FAVORITE}
-                header={
-                  <div className={styles.groupName}>
-                    <FavoriteFilled color={colors.warningColor} />
-                    <Typography className={styles.text} variant='h9' color={colors.secondLevelText}>
-                      {t(Strings.favorite)}
-                    </Typography>
-                    <ArrowIcon
-                      className={classnames(styles.arrow, {
-                        [styles.active]: activeKey.includes(ConfigConstant.Modules.FAVORITE),
-                      })}
-                    />
-                  </div>
-                }
-                showArrow={false}
+            <div className={styles.btnGroup}>
+              <RadioGroup
+                name="workbench-btn-group"
+                isBtn
+                block
+                value={activeKey}
+                onChange={(_e, value) => changeHandler(value)}
               >
-                <div className={styles.scrollContainer}>
-                  <Favorite />
+                <Radio value={ConfigConstant.Modules.CATALOG}>
+                  {t(Strings.catalog)}
+                </Radio>
+                <Radio value={ConfigConstant.Modules.FAVORITE}>
+                  {t(Strings.favorite)}
+                </Radio>
+              </RadioGroup>
+            </div>
+            {activeKey === ConfigConstant.Modules.FAVORITE ? (
+              <div className={styles.scrollContainer}>
+                <Favorite />
+              </div>
+            ) : (
+              <>
+                <div className={styles.catalogActions}>
+                  <LinkButton
+                    underline={false}
+                    component="div"
+                    prefixIcon={<AddOutlined color={colors.textCommonSecondary} size={12} />}
+                    color={colors.textCommonSecondary}
+                    disabled={!rootManageable}
+                    onClick={openDefaultMenu}
+                  >
+                    <Tooltip title={t(Strings.new_node_tooltip)}>
+                      {t(Strings.new_node_btn_title)}
+                    </Tooltip>
+                  </LinkButton>
+                  <LinkButton
+                    underline={false}
+                    component="div"
+                    prefixIcon={<ImportOutlined color={colors.textCommonSecondary} size={12} />}
+                    color={colors.textCommonSecondary}
+                    onClick={() => {
+                      dispatch(StoreActions.updateImportModalNodeId(rootId));
+                    }}
+                  >
+                    <Tooltip title={t(Strings.import_from_excel_tooltip)}>
+                      {t(Strings.import_file_btn_title)}
+                    </Tooltip>
+                  </LinkButton>
+                  <LinkButton
+                    underline={false}
+                    component="div"
+                    prefixIcon={<FolderAddOutlined color={colors.textCommonSecondary} size={12} />}
+                    color={colors.textCommonSecondary}
+                    onClick={() => {
+                      addTreeNode(rootId, ConfigConstant.NodeType.FOLDER);
+                    }}
+                  >
+                    <Tooltip title={t(Strings.new_folder_tooltip)}>
+                      {t(Strings.folder)}
+                    </Tooltip>
+                  </LinkButton>
                 </div>
-              </Panel>
-              <Panel
-                className={styles.catalog}
-                key={ConfigConstant.Modules.CATALOG}
-                header={
-                  <div className={styles.groupName}>
-                    <TitleWorkFilled color={colors.primaryColor} />
-                    <Typography className={styles.text} variant='h9' color={colors.secondLevelText}>
-                      {t(Strings.catalog)}
-                    </Typography>
-                    <ArrowIcon
-                      className={classnames(styles.arrow, {
-                        [styles.active]: activeKey.includes(ConfigConstant.Modules.CATALOG),
-                      })}
-                    />
-                  </div>
-                }
-                extra={
-                  rootManageable ? (
-                    <IconButton style={{ marginRight: 10 }} onClick={openDefaultMenu} icon={AddOutlined} id={WORKBENCH_SIDE_ID.ADD_NODE_BTN} />
-                  ) : null
-                }
-                showArrow={false}
-              >
                 <div className={styles.scrollContainer}>
-                  <Catalog />
+                  <Catalog/>
                 </div>
-              </Panel>
-            </Collapse>
+              </>
+            )}
+
           </div>
         </div>
         <div className={styles.fixedGroup}>
           {!isMobile && (
             <Tooltip title={t(Strings.trash)}>
-              <div className={styles.groupItem} onClick={jumpTrash} data-sensors-click id={WORKBENCH_SIDE_ID.RECYCLE_BIN}>
-                <TrashIcon fill={colors.rc04} />
+              <div className={styles.groupItem} onClick={jumpTrash} id={WORKBENCH_SIDE_ID.RECYCLE_BIN}>
+                <DeleteOutlined color={colors.rc04} />
               </div>
             </Tooltip>
           )}
           <Tooltip title={t(Strings.workbench_side_space_template)}>
-            <div className={styles.groupItem} onClick={jumpSpaceTemplate} data-sensors-click id={WORKBENCH_SIDE_ID.TO_SPACE_TEMPLATE}>
-              <TemplateIcon fill={colors.rc02} />
+            <div className={styles.groupItem} onClick={jumpSpaceTemplate} id={WORKBENCH_SIDE_ID.TO_SPACE_TEMPLATE}>
+              <PlanetOutlined color={colors.rc02} />
             </div>
           </Tooltip>
           {inviteStatus && !isIdassPrivateDeployment() && (
             <Tooltip title={t(Strings.invite_friends)}>
-              <div className={styles.groupItem} onClick={() => expandInviteModal()}>
-                <InviteIcon fill={colors.primaryColor} />
+              <div
+                className={styles.groupItem}
+                onClick={() => {
+                  posthog?.capture(TrackEvents.InviteByWorkbench);
+                  expandInviteModal();
+                }}
+              >
+                <UserAddOutlined color={colors.primaryColor} />
               </div>
             </Tooltip>
           )}

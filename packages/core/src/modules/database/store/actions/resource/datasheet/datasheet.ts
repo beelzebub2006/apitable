@@ -16,45 +16,106 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import {
-  fetchDatasheetPack, fetchForeignDatasheetPack, fetchShareDatasheetPack, fetchShareForeignDatasheetPack, fetchTemplateDatasheetPack,
-  fetchEmbedDatasheetPack, fetchEmbedForeignDatasheetPack
-} from '../../../../api/datasheet_api';
 import { StatusCode } from 'config';
-import { Strings, t } from '../../../../../../exports/i18n';
-import { isString } from 'lodash';
-import { Events, Player } from '../../../../../shared/player';
+import { Strings, t } from 'exports/i18n';
+import {
+  DateUnitType,
+  IActiveRowInfo,
+  IApiWrapper,
+  IDatasheetPack,
+  IDragTarget,
+  ILoadedDataPackAction,
+  ILoadingRecordAction,
+  INodeMeta,
+  IRecordMap,
+  IReduxState,
+  IServerDatasheetPack,
+  ISetFieldInfoState,
+  ISnapshot,
+  IViewDerivation,
+  ModalConfirmKey,
+} from 'exports/store';
+import { deleteNode, loadFieldPermissionMap, updateUnitMap, updateUserMap } from 'exports/store/actions';
+import { getDatasheet, getDatasheetLoading, getMirror, getSnapshot } from 'exports/store/selectors';
+import produce from 'immer';
+import { Events, Player } from 'modules/shared/player';
+import {
+  ACTIVE_EXPORT_VIEW_ID,
+  ACTIVE_OPERATE_VIEW_ID,
+  ADD_DATASHEET,
+  CHANGE_VIEW,
+  CHANGE_WIDGET_PANEL_WIDTH,
+  CLEAR_ACTIVE_ROW_INFO,
+  CLEAR_FIELD_INFO,
+  DATAPACK_LOADED,
+  DATAPACK_REQUEST,
+  DATASHEET_CONNECTED,
+  DATASHEET_ERROR_CODE,
+  DELETE_VIEW_DERIVATION,
+  PATCH_VIEW_DERIVATION,
+  RECORD_NODE_DESC,
+  REFRESH_SNAPSHOT,
+  RESET_DATASHEET,
+  RESET_EXPORT_VIEW_ID,
+  RESET_OPERATE_VIEW_ID,
+  SET_ACTIVE_FIELD_STATE,
+  SET_ACTIVE_ROW_INFO,
+  SET_CALENDAR_GRID_WIDTH,
+  SET_CALENDAR_SETTING_PANEL_WIDTH,
+  SET_CLOSE_SYNC_VIEW_ID,
+  SET_DATASHEET_COMPUTED,
+  SET_DATASHEET_SYNCING,
+  SET_DRAG_TARGET,
+  SET_EDIT_STATUS,
+  SET_GANTT_DATE_UNIT_TYPE,
+  SET_GANTT_GRID_WIDTH,
+  SET_GANTT_SETTING_PANEL_WIDTH,
+  SET_GRID_VIEW_HOVER_FIELD_ID,
+  SET_GROUPING_COLLAPSE,
+  SET_HIGHLIGHT_FIELD_ID,
+  SET_HOVER_GROUP_PATH,
+  SET_HOVER_RECORD_ID,
+  SET_HOVER_ROW_OF_ADD_RECORD,
+  SET_KANBAN_GROUPING_EXPAND,
+  SET_LOADING_RECORD,
+  SET_NEW_RECORD_EXPECT_INDEX,
+  SET_ORG_CHART_GRID_WIDTH as SET_ORG_CHART_GRID_PANEL_WIDTH,
+  SET_ORG_CHART_SETTING_PANEL_WIDTH,
+  SET_ROBOT_PANEL_STATUS,
+  SET_SEARCH_KEYWORD,
+  SET_SEARCH_RESULT_CURSOR_INDEX,
+  SET_VIEW_DERIVATION,
+  SWITCH_ACTIVE_PANEL,
+  TOGGLE_CALENDAR_GRID,
+  TOGGLE_CALENDAR_GUIDE_STATUS,
+  TOGGLE_CALENDAR_SETTING_PANEL,
+  TOGGLE_GANTT_GRID,
+  TOGGLE_GANTT_SETTING_PANEL,
+  TOGGLE_KANBAN_GROUP_SETTING_VISIBLE,
+  TOGGLE_ORG_CHART_GRID as TOGGLE_ORG_CHART_RIGHT_PANEL,
+  TOGGLE_ORG_CHART_GUIDE_STATUS,
+  TOGGLE_ORG_CHART_SETTING_PANEL,
+  TOGGLE_TIME_MACHINE_PANEL,
+  TOGGLE_WIDGET_PANEL,
+  TRIGGER_VIEW_DERIVATION_COMPUTED,
+  UPDATE_DATASHEET,
+  UPDATE_DATASHEET_COMPUTED,
+  UPDATE_DATASHEET_NAME,
+  UPDATE_SNAPSHOT,
+} from 'modules/shared/store/action_constants';
 import { AnyAction, Dispatch } from 'redux';
 import { batchActions } from 'redux-batched-actions';
+import { checkInnerConsistency } from 'utils';
+import { checkLinkConsistency } from 'utils/link_consistency';
 import {
-  DateUnitType, IActiveRowInfo, IApiWrapper, IDatasheetPack, IDragTarget, ILoadedDataPackAction, ILoadingRecordAction, INodeMeta, IReduxState,
-  IServerDatasheetPack, ISetFieldInfoState, ISnapshot,
-} from '../../../../../../exports/store';
-import {
-  ACTIVE_EXPORT_VIEW_ID, ACTIVE_OPERATE_VIEW_ID, ADD_DATASHEET, CHANGE_VIEW, CHANGE_WIDGET_PANEL_WIDTH, CLEAR_ACTIVE_ROW_INFO, CLEAR_FIELD_INFO,
-  DATAPACK_LOADED, DATAPACK_REQUEST, DATASHEET_CONNECTED, DATASHEET_ERROR_CODE, RECORD_NODE_DESC, REFRESH_SNAPSHOT, RESET_DATASHEET,
-  RESET_EXPORT_VIEW_ID, RESET_OPERATE_VIEW_ID, SET_ACTIVE_FIELD_STATE, SET_ACTIVE_ROW_INFO, SET_CALENDAR_GRID_WIDTH, SET_CALENDAR_SETTING_PANEL_WIDTH,
-  SET_CLOSE_SYNC_VIEW_ID, SET_DATASHEET_COMPUTED, SET_DATASHEET_SYNCING, SET_DRAG_TARGET, SET_EDIT_STATUS, SET_GANTT_DATE_UNIT_TYPE,
-  SET_GANTT_GRID_WIDTH, SET_GANTT_SETTING_PANEL_WIDTH, SET_GRID_VIEW_HOVER_FIELD_ID, SET_GROUPING_COLLAPSE, SET_HIGHLIGHT_FIELD_ID,
-  SET_HOVER_GROUP_PATH, SET_HOVER_RECORD_ID, SET_HOVER_ROW_OF_ADD_RECORD, SET_KANBAN_GROUPING_EXPAND, SET_LOADING_RECORD, SET_NEW_RECORD_EXPECT_INDEX,
-  SET_ORG_CHART_GRID_WIDTH as SET_ORG_CHART_GRID_PANEL_WIDTH, SET_ORG_CHART_SETTING_PANEL_WIDTH, SET_ROBOT_PANEL_STATUS, SET_SEARCH_KEYWORD,
-  SET_SEARCH_RESULT_CURSOR_INDEX, SWITCH_ACTIVE_PANEL, TOGGLE_CALENDAR_GRID, TOGGLE_CALENDAR_GUIDE_STATUS, TOGGLE_CALENDAR_SETTING_PANEL,
-  TOGGLE_GANTT_GRID, TOGGLE_GANTT_SETTING_PANEL, TOGGLE_KANBAN_GROUP_SETTING_VISIBLE, TOGGLE_ORG_CHART_GRID as TOGGLE_ORG_CHART_RIGHT_PANEL,
-  TOGGLE_ORG_CHART_GUIDE_STATUS, TOGGLE_ORG_CHART_SETTING_PANEL, TOGGLE_TIME_MACHINE_PANEL, TOGGLE_WIDGET_PANEL, UPDATE_DATASHEET,
-  UPDATE_DATASHEET_COMPUTED, UPDATE_DATASHEET_NAME, UPDATE_SNAPSHOT,
-} from '../../../../../shared/store/action_constants';
-import { deleteNode, loadFieldPermissionMap, updateUnitMap, updateUserMap } from '../../../../../../exports/store/actions';
-import { getDatasheet, getDatasheetLoading, getMirror } from '../../../../../../exports/store/selectors';
-import { FieldType } from 'types';
-import { consistencyCheck } from 'utils';
-
-// export const applyJOTOperations = (operations: IOperation[], datasheetId: string): IJOTActionPayload => {
-//   return {
-//     type: JOT_ACTION,
-//     payload: { operations },
-//     datasheetId,
-//   };
-// };
+  fetchDatasheetPack,
+  fetchEmbedDatasheetPack,
+  fetchEmbedForeignDatasheetPack,
+  fetchForeignDatasheetPack,
+  fetchShareDatasheetPack,
+  fetchShareForeignDatasheetPack,
+  fetchTemplateDatasheetPack,
+} from '../../../../api/datasheet_api';
 
 export function requestDatasheetPack(datasheetId: string) {
   return {
@@ -63,18 +124,14 @@ export function requestDatasheetPack(datasheetId: string) {
   };
 }
 
-function consistencyCheckHandle(payload: IServerDatasheetPack, isPartOfData: boolean, getState?: () => IReduxState) {
-  if (isPartOfData) {
-    return;
-  }
+function ensureInnerConsistency(payload: IServerDatasheetPack, getState?: () => IReduxState) {
   const { snapshot, datasheet } = payload;
 
-  // @su 
+  // @su
   // the check of data consistency
   // datasheet is the only object that should be attention
   // if if all the permission of datasheet is ok, no need to check more
   if (!datasheet.permissions?.editable) {
-
     // when the permission of datasheet is not ok, then check other factors
     const pageParams = getState ? getState().pageParams : {};
 
@@ -94,32 +151,56 @@ function consistencyCheckHandle(payload: IServerDatasheetPack, isPartOfData: boo
     }
   }
 
-  const errorInfo = consistencyCheck(snapshot);
+  const errorInfo = checkInnerConsistency(snapshot);
 
   if (errorInfo) {
     Player.doTrigger(Events.app_error_logger, {
       error: new Error(t(Strings.error_data_consistency_and_check_the_snapshot)),
       metaData: {
         datasheetId: datasheet.id,
-        errorInfo,
+        errors: errorInfo,
       },
     });
 
     Player.doTrigger(Events.app_modal_confirm, {
-      key: 'fixConsistency',
+      key: ModalConfirmKey.FixInnerConsistency,
       metaData: {
         datasheetId: datasheet.id,
+        errors: errorInfo,
       },
     });
   }
+}
+
+function ensureLinkConsistency(state: IReduxState, loadedForeignDstId: string) {
+  const error = checkLinkConsistency(state, loadedForeignDstId);
+  if (!error || !error.errorRecordIds.size) {
+    return;
+  }
+
+  console.log('found link inconsistency', error);
+
+  Player.doTrigger(Events.app_error_logger, {
+    error: new Error(t(Strings.error_data_consistency_and_check_the_snapshot)),
+    metaData: {
+      error,
+    },
+  });
+
+  Player.doTrigger(Events.app_modal_confirm, {
+    key: ModalConfirmKey.FixLinkConsistency,
+    metaData: {
+      error,
+    },
+  });
 }
 
 const getActiveViewFromData = (datasheet: INodeMeta, snapshot: ISnapshot, getState?: () => IReduxState) => {
   if (datasheet.activeView) return datasheet.activeView;
   /**
    * by Aria
-   * attention, if params.viewId as activeView, 
-   * will make errors when read foreignDatasheet and activeView, 
+   * attention, if params.viewId as activeView,
+   * will make errors when read foreignDatasheet and activeView,
    * it will point to current opened table, rather than real related table
    */
   if (getState && getState().pageParams.datasheetId === datasheet.id) {
@@ -128,23 +209,50 @@ const getActiveViewFromData = (datasheet: INodeMeta, snapshot: ISnapshot, getSta
   return snapshot.meta.views[0]!.id;
 };
 
+const checkSortInto = (snapshot: ISnapshot) => {
+  return produce(snapshot, draft => {
+    const views = draft.meta.views;
+    for (const v of views) {
+      if (Array.isArray(v.sortInfo)) {
+        v.sortInfo = {
+          keepSort: true,
+          rules: v.sortInfo,
+        };
+      }
+    }
+  });
+};
+
+const mergeRecordMap = (snapshot: ISnapshot, recordMap: IRecordMap) => {
+  return produce(snapshot, draft => {
+    draft.recordMap = { ...recordMap, ...draft.recordMap };
+  });
+};
+
 export function receiveDataPack<T extends IServerDatasheetPack = IServerDatasheetPack>(
   payload: T,
-  isPartOfData = false,
-  getState?: () => IReduxState,
+  options?: { isPartOfData?: boolean; fixConsistency?: boolean; toMergeRecordMap?: IRecordMap; getState?: () => IReduxState },
 ): ILoadedDataPackAction {
   const { snapshot, datasheet } = payload;
+  const { isPartOfData = false, fixConsistency = true, toMergeRecordMap, getState } = options ?? {};
 
-  // TODO: move data consistency check  to node layer, and ensure full recover mechanism
-  // check data consistency only when data is editable
-  consistencyCheckHandle(payload, isPartOfData, getState);
+  if (fixConsistency && !isPartOfData) {
+    // TODO: move data consistency check  to node layer, and ensure full recover mechanism
+    // check data consistency only when data is editable
+    ensureInnerConsistency(payload, getState);
+  }
+
+  let newSnapshot = checkSortInto(snapshot);
+  if (toMergeRecordMap) {
+    newSnapshot = mergeRecordMap(snapshot, toMergeRecordMap);
+  }
 
   return {
     type: DATAPACK_LOADED,
     datasheetId: datasheet.id,
     payload: {
       ...datasheet,
-      snapshot,
+      snapshot: newSnapshot,
       isPartOfData,
       activeView: getActiveViewFromData(datasheet, snapshot, getState)!,
     },
@@ -167,13 +275,6 @@ export const recordNodeDesc = (datasheetId: string, desc: string) => {
   };
 };
 
-interface IFetchDatasheetSuccess {
-  responseBody: IApiWrapper & { data: IServerDatasheetPack };
-  datasheetId: string;
-  dispatch: Dispatch;
-  getState: () => IReduxState;
-}
-
 export const fetchDatasheetApi = (datasheetId: string, shareId?: string, templateId?: string, embedId?: string, recordIds?: string | string[]) => {
   let requestMethod = fetchDatasheetPack;
   if (shareId) {
@@ -183,20 +284,14 @@ export const fetchDatasheetApi = (datasheetId: string, shareId?: string, templat
     requestMethod = fetchTemplateDatasheetPack;
   }
 
-  if(embedId) {
+  if (embedId) {
     requestMethod = () => fetchEmbedDatasheetPack(embedId, datasheetId);
   }
 
   return requestMethod(datasheetId, recordIds);
 };
 
-export function fetchDatasheet(
-  datasheetId: string,
-  successCb?: (props?: IFetchDatasheetSuccess) => void,
-  overWrite = false,
-  extra?: { recordIds: string[] },
-  failCb?: () => void,
-) {
+export function fetchDatasheet(datasheetId: string, successCb?: () => void, overWrite = false, extra?: { recordIds: string[] }, failCb?: () => void) {
   return (dispatch: any, getState: () => IReduxState) => {
     const state = getState();
     const datasheet = getDatasheet(state, datasheetId);
@@ -210,19 +305,22 @@ export function fetchDatasheet(
 
     if (!datasheet || datasheet.isPartOfData || overWrite) {
       dispatch(requestDatasheetPack(datasheetId));
-      return fetchDatasheetApi(datasheetId, shareId, templateId, embedId, recordIds).then(response => {
-        if (!response.data.success && state.catalogTree.treeNodesMap[datasheetId]) {
-          dispatch(deleteNode({ nodeId: datasheetId, parentId: state.catalogTree.treeNodesMap[datasheetId]!.parentId }));
-        }
-        return Promise.resolve({ datasheetId, responseBody: response.data, dispatch, getState });
-      }).catch(e => {
-        dispatch(datasheetErrorCode(datasheetId, StatusCode.COMMON_ERR));
-        throw e;
-      }).then(props => {
-        // recordIds exits means that only part of recordsIds data is needed @boris
-        fetchDatasheetPackSuccess({ ...props, isPartOfData: Boolean(recordIds) });
-        props.responseBody.success ? successCb && successCb(props) : failCb && failCb();
-      });
+      return fetchDatasheetApi(datasheetId, shareId, templateId, embedId, recordIds)
+        .then(response => {
+          if (!response.data.success && state.catalogTree.treeNodesMap[datasheetId]) {
+            dispatch(deleteNode({ nodeId: datasheetId, parentId: state.catalogTree.treeNodesMap[datasheetId]!.parentId }));
+          }
+          return Promise.resolve({ datasheetId, responseBody: response.data, dispatch, getState });
+        })
+        .catch(e => {
+          dispatch(datasheetErrorCode(datasheetId, StatusCode.COMMON_ERR));
+          throw e;
+        })
+        .then(props => {
+          // recordIds exits means that only part of recordsIds data is needed @boris
+          fetchDatasheetPackSuccess({ ...props, isPartOfData: Boolean(recordIds), forceFetch: overWrite });
+          props.responseBody.success ? successCb && successCb() : failCb && failCb();
+        });
     }
     successCb && successCb();
     return;
@@ -232,10 +330,6 @@ export function fetchDatasheet(
 /**
  * in the expanded UI modal that select related records, request this api to get the related table's permission
  * no need to consider templates
- * 
- * @param {string} dstId
- * @param {string} foreignDstId
- * @returns {(dispatch: any, getState: () => IReduxState) => (undefined | Promise<void>)}
  */
 export function fetchForeignDatasheet(resourceId: string, foreignDstId: string, forceFetch?: boolean) {
   return (dispatch: any, getState: () => IReduxState) => {
@@ -253,115 +347,103 @@ export function fetchForeignDatasheet(resourceId: string, foreignDstId: string, 
       requestMethod = () => fetchShareForeignDatasheetPack(shareId, resourceId, foreignDstId);
     }
 
-    if(embedId) {
+    if (embedId) {
       requestMethod = () => fetchEmbedForeignDatasheetPack(embedId, resourceId, foreignDstId);
     }
 
     if (forceFetch || !foreignDatasheet || foreignDatasheet.isPartOfData) {
       dispatch(requestDatasheetPack(foreignDstId));
-      return requestMethod(resourceId, foreignDstId).then(response => {
-        return Promise.resolve({ datasheetId: foreignDstId, responseBody: response.data, dispatch, getState });
-      }).catch(e => {
-        if (state.catalogTree.treeNodesMap[foreignDstId]) {
-          dispatch(deleteNode({ nodeId: foreignDstId, parentId: state.catalogTree.treeNodesMap[foreignDstId]!.parentId }));
-        }
-        dispatch(datasheetErrorCode(foreignDstId, StatusCode.COMMON_ERR));
-        throw e;
-      }).then(props => {
-        fetchDatasheetPackSuccess(props);
-      });
+      return requestMethod(resourceId, foreignDstId)
+        .then(response => {
+          return Promise.resolve({ datasheetId: foreignDstId, responseBody: response.data, dispatch, getState });
+        })
+        .catch(e => {
+          if (state.catalogTree.treeNodesMap[foreignDstId]) {
+            dispatch(deleteNode({ nodeId: foreignDstId, parentId: state.catalogTree.treeNodesMap[foreignDstId]!.parentId }));
+          }
+          dispatch(datasheetErrorCode(foreignDstId, StatusCode.COMMON_ERR));
+          throw e;
+        })
+        .then(props => {
+          fetchDatasheetPackSuccess({ ...props, forceFetch });
+          if (props.responseBody.success) {
+            if (!shareId && !embedId && state.pageParams.datasheetId === resourceId) {
+              dispatch((_dispatch: any, getState: () => IReduxState) => {
+                ensureLinkConsistency(getState(), foreignDstId);
+              });
+            }
+          }
+        });
     }
     return;
   };
 }
 
-/**
- * edit the response data that server returns
- * @param data
- */
-export const hackData = (data: IServerDatasheetPack): IServerDatasheetPack | undefined => {
-  // replace old datetime format
-  if (!data) {
-    return;
-  }
-  Object.values(data.snapshot.meta.fieldMap).forEach(field => {
-    if (field.type === FieldType.DateTime) {
-      if (isString(field.property.dateFormat)) {
-        switch (field.property.dateFormat) {
-          case 'YYYY/MM/DD':
-          case 'yyyy/MM/dd':
-            field.property.dateFormat = 0;
-            break;
-          case 'YYYY-MM-DD':
-          case 'yyyy-MM-dd':
-            field.property.dateFormat = 1;
-            break;
-          case 'DD/MM/YYYY':
-          case 'dd/MM/yyyy':
-            field.property.dateFormat = 2;
-            break;
-          case 'MM-DD':
-          case 'MM-dd':
-            field.property.dateFormat = 3;
-            break;
-          default:
-            break;
-        }
-      }
-      if (isString(field.property.timeFormat) && field.property.timeFormat) {
-        field.property.includeTime = true;
-      }
-      field.property.timeFormat = 0;
-    }
-  });
-  return data;
-};
-
 interface IFetchDatasheetPack {
-  datasheetId: string,
-  responseBody: IApiWrapper & { data: IServerDatasheetPack },
-  dispatch: Dispatch,
-  getState: () => IReduxState,
-  isPartOfData?: boolean
+  datasheetId: string;
+  responseBody: IApiWrapper & { data: IServerDatasheetPack };
+  dispatch: Dispatch;
+  getState: () => IReduxState;
+  isPartOfData?: boolean;
+  forceFetch?: boolean;
 }
 
-export function fetchDatasheetPackSuccess(
-  { datasheetId, responseBody, dispatch, getState, isPartOfData = false }: IFetchDatasheetPack,
-) {
-  const data = responseBody.data;
+function newRecordMapContainsNewRecords(oldRecordMap: Readonly<IRecordMap>, newRecordMap: IRecordMap): boolean {
+  for (const newRecordId in newRecordMap) {
+    if (!(newRecordId in oldRecordMap)) {
+      return true;
+    }
+  }
+  return false;
+}
 
-  if (responseBody.success && data) {
+export function fetchDatasheetPackSuccess({ datasheetId, responseBody, dispatch, getState, isPartOfData = false, forceFetch }: IFetchDatasheetPack) {
+  if (responseBody.success) {
+    const state = getState();
+    const dataPack = responseBody.data;
     const dispatchActions: AnyAction[] = [];
-    if (data.foreignDatasheetMap) {
-      Object.keys(data.foreignDatasheetMap).forEach(datasheetPack => {
-        const foreignDatasheetPack = data.foreignDatasheetMap![datasheetPack]!;
-        dispatchActions.push(receiveDataPack(foreignDatasheetPack, true));
+    if (dataPack.foreignDatasheetMap) {
+      Object.keys(dataPack.foreignDatasheetMap).forEach(foreignDstId => {
+        const foreignDatasheetPack = dataPack.foreignDatasheetMap![foreignDstId]!;
+        const dst = getDatasheet(state, foreignDstId);
+        let toMergeRecordMap = undefined;
+        if (dst) {
+          const oldRecordMap = getSnapshot(state, foreignDstId)!.recordMap;
+          const newRecordMap = foreignDatasheetPack.snapshot.recordMap;
+          if (!newRecordMapContainsNewRecords(oldRecordMap, newRecordMap)) {
+            return;
+          }
+          toMergeRecordMap = oldRecordMap;
+        }
+        dispatchActions.push(receiveDataPack(foreignDatasheetPack, { isPartOfData: true, toMergeRecordMap }));
         if (foreignDatasheetPack.fieldPermissionMap) {
           dispatchActions.push(loadFieldPermissionMap(foreignDatasheetPack.fieldPermissionMap, foreignDatasheetPack.datasheet.id));
         }
       });
     }
-    if (data.datasheet) {
-      dispatchActions.push(receiveDataPack(data, isPartOfData, getState));
-      if (data.units) {
+    if (dataPack.datasheet) {
+      const dst = getDatasheet(state, dataPack.datasheet.id);
+      if (dst?.snapshot && !dst.isPartOfData && !forceFetch) {
+        return;
+      }
+      dispatchActions.push(receiveDataPack(dataPack, { isPartOfData, getState }));
+      if (dataPack.units) {
         // init unityMap, for `member` field use
         const unitMap = {};
-        data.units.filter(unit => unit.unitId).forEach(unit => unitMap[unit.unitId!] = unit);
+        dataPack.units.filter(unit => unit.unitId).forEach(unit => (unitMap[unit.unitId!] = unit));
         dispatch(updateUnitMap(unitMap));
 
         // init UserMap, for `CreatedBy`/`LastModifiedBy` field use
         const userMap = {};
-        data.units.filter(unit => unit.userId).forEach(user => userMap[user.userId!] = user);
+        dataPack.units.filter(unit => unit.userId).forEach(user => (userMap[user.userId!] = user));
         dispatch(updateUserMap(userMap));
-
       }
     }
-    if (data.fieldPermissionMap) {
-      dispatch(loadFieldPermissionMap(data.fieldPermissionMap, datasheetId));
+    if (dataPack.fieldPermissionMap) {
+      dispatch(loadFieldPermissionMap(dataPack.fieldPermissionMap, datasheetId));
     }
     dispatch(batchActions(dispatchActions));
-  }
-  if (!responseBody.success) {
+  } else {
     dispatch(datasheetErrorCode(datasheetId, responseBody.code));
   }
 }
@@ -400,17 +482,17 @@ export const setHoverRowOfAddRecord = (datasheetId: string, payload: string | nu
 };
 
 /**
- * 
+ *
  * set current operation's row or column (by sky)
- * 
- * for rows, operations here only mean unchecked rows, which can drag it directly, 
+ *
+ * for rows, operations here only mean unchecked rows, which can drag it directly,
  * if it's multiple rows, the operation data is obtained from recordRanges
- * 
+ *
  * for columns, similarly, here only save the single column operation, multiple columns data read from fieldRanges
- * 
- * @param datasheetId 
- * @param payload 
- * @returns 
+ *
+ * @param datasheetId
+ * @param payload
+ * @returns
  */
 export const setDragTarget = (datasheetId: string, payload: IDragTarget) => {
   return {
@@ -459,7 +541,7 @@ export const toggleKanbanGroupingSettingVisible = (datasheetId: string, payload:
   };
 };
 
-export const setEditStatus = (datasheetId: string, payload: { recordId: string, fieldId: string } | null) => {
+export const setEditStatus = (datasheetId: string, payload: { recordId: string; fieldId: string } | null) => {
   return {
     type: SET_EDIT_STATUS,
     datasheetId,
@@ -475,10 +557,7 @@ export const updateDatasheetName = (datasheetId: string, newName: string) => {
   };
 };
 
-export const setLoadingRecord = (
-  payload: { recordIds: string[], loading: boolean | 'error' },
-  datasheetId: string,
-): ILoadingRecordAction => {
+export const setLoadingRecord = (payload: { recordIds: string[]; loading: boolean | 'error' }, datasheetId: string): ILoadingRecordAction => {
   return {
     type: SET_LOADING_RECORD,
     datasheetId,
@@ -492,47 +571,36 @@ export const setDatasheetConnected = (datasheetId: string) => {
     datasheetId,
   };
 };
-export const resetDatasheet = (
-  datasheetId: string,
-) => {
+export const resetDatasheet = (datasheetId: string) => {
   return {
     type: RESET_DATASHEET,
     datasheetId,
   };
 };
 
-export const updateDatasheet = ((
-  datasheetId: string,
-  datasheet: Partial<INodeMeta>,
-) => {
+export const updateDatasheet = (datasheetId: string, datasheet: Partial<INodeMeta>) => {
   return {
     type: UPDATE_DATASHEET,
     datasheetId,
     payload: datasheet,
   };
-});
+};
 
-export const updateSnapshot = ((
-  datasheetId: string,
-  snapshot: ISnapshot,
-) => {
+export const updateSnapshot = (datasheetId: string, snapshot: ISnapshot) => {
   return {
     type: UPDATE_SNAPSHOT,
     datasheetId,
     payload: snapshot,
   };
-});
+};
 
-export const addDatasheet = ((
-  datasheetId: string,
-  datasheetPack: IDatasheetPack,
-) => {
+export const addDatasheet = (datasheetId: string, datasheetPack: IDatasheetPack) => {
   return {
     type: ADD_DATASHEET,
     datasheetId,
     payload: datasheetPack,
   };
-});
+};
 
 export const changeSyncingStatus = (datasheetId: string, status: boolean) => {
   return {
@@ -730,14 +798,14 @@ export interface ISwitchActivePanel {
 
 export interface ISetGridViewHoverFieldIdAction {
   type: typeof SET_GRID_VIEW_HOVER_FIELD_ID;
-  payload: string | null,
-  datasheetId: string
+  payload: string | null;
+  datasheetId: string;
 }
 
 export interface ISetHighlightFieldIdAction {
   type: typeof SET_HIGHLIGHT_FIELD_ID;
-  payload: string | null,
-  datasheetId: string
+  payload: string | null;
+  datasheetId: string;
 }
 
 export const setGridViewHoverFieldId = (fieldId: string | null, datasheetId: string): ISetGridViewHoverFieldIdAction => {
@@ -750,8 +818,8 @@ export const setGridViewHoverFieldId = (fieldId: string | null, datasheetId: str
 
 export interface ISetCloseSyncViewIdAction {
   type: typeof SET_CLOSE_SYNC_VIEW_ID;
-  payload: string,
-  datasheetId: string
+  payload: string;
+  datasheetId: string;
 }
 
 export const setCloseSyncViewId = (viewId: string, datasheetId: string): ISetCloseSyncViewIdAction => {
@@ -825,3 +893,35 @@ export const resetExportViewId = (datasheetId: string) => {
   };
 };
 
+export const setViewDerivation = (datasheetId: string, payload: { viewId: string; viewDerivation: IViewDerivation }) => {
+  return {
+    datasheetId,
+    type: SET_VIEW_DERIVATION,
+    payload,
+  };
+};
+
+// As opposed to set, patch means partial update
+export const patchViewDerivation = (datasheetId: string, payload: { viewId: string; viewDerivation: Partial<IViewDerivation> }) => {
+  return {
+    datasheetId,
+    type: PATCH_VIEW_DERIVATION,
+    payload,
+  };
+};
+
+export const deleteViewDerivation = (datasheetId: string, viewId: string) => {
+  return {
+    datasheetId,
+    type: DELETE_VIEW_DERIVATION,
+    payload: { viewId },
+  };
+};
+
+export const triggerViewDerivationComputed = (datasheetId: string, viewId: string) => {
+  return {
+    datasheetId,
+    type: TRIGGER_VIEW_DERIVATION_COMPUTED,
+    payload: { datasheetId, viewId },
+  };
+};

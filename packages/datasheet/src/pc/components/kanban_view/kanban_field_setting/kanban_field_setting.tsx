@@ -16,8 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { Button, ThemeProvider } from '@apitable/components';
+import { Button, ThemeProvider, WrapperTooltip } from '@apitable/components';
 import { CollaCommandName, ConfigConstant, ExecuteResult, FieldType, IField, KanbanStyleKey, Selectors, Strings, t } from '@apitable/core';
+import { AddOutlined, ChevronLeftOutlined } from '@apitable/icons';
 import { useClickAway } from 'ahooks';
 import { Modal, Radio } from 'antd';
 import { RadioChangeEvent } from 'antd/lib/radio';
@@ -25,18 +26,19 @@ import classNames from 'classnames';
 import { FieldPermissionLock } from 'pc/components/field_permission';
 import { getFieldTypeIcon } from 'pc/components/multi_grid/field_setting';
 import { DATASHEET_VIEW_CONTAINER_ID } from 'pc/components/view';
+import { useShowViewLockModal } from 'pc/components/view_lock/use_show_view_lock_modal';
 import { resourceService } from 'pc/resource_service';
 import { store } from 'pc/store';
 import * as React from 'react';
 import { useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider, useSelector } from 'react-redux';
-import IconAdd from 'static/icon/common/common_icon_add_content.svg';
-import IconArrowLeft from 'static/icon/common/common_icon_left_line.svg';
 import { useCommand } from '../hooks/use_command';
 import { KanbanMember } from './kanban_member';
 import { KanbanOption } from './kanban_option/kanban_option';
 import styles from './styles.module.less';
+import { ScreenSize } from 'pc/components/common/component_display';
+import { useResponsive } from 'pc/hooks';
 
 enum KanbanRoute {
   Init,
@@ -53,7 +55,7 @@ interface ISettingHeadProps {
   setRoute: React.Dispatch<React.SetStateAction<KanbanRoute>>;
 }
 
-const SettingHead: React.FC<ISettingHeadProps> = ({ route, setRoute }) => {
+const SettingHead: React.FC<React.PropsWithChildren<ISettingHeadProps>> = ({ route, setRoute }) => {
   return (
     <div className={styles.header}>
       {
@@ -62,7 +64,7 @@ const SettingHead: React.FC<ISettingHeadProps> = ({ route, setRoute }) => {
           className={styles.back}
           onClick={() => { setRoute(KanbanRoute.Init); }}
         >
-          <IconArrowLeft width={16} height={16} />
+          <ChevronLeftOutlined size={16} />
           {t(Strings.back)}
         </div>
       }
@@ -74,7 +76,7 @@ const SettingHead: React.FC<ISettingHeadProps> = ({ route, setRoute }) => {
   );
 };
 
-export const KanbanFieldSettingModal: React.FC<IKanbanFieldSettingModalProps> = ({ onClose }) => {
+export const KanbanFieldSettingModal: React.FC<React.PropsWithChildren<IKanbanFieldSettingModalProps>> = ({ onClose }) => {
   const [route, setRoute] = useState<KanbanRoute>(KanbanRoute.Init);
   const columnCount = useSelector(Selectors.getColumnCount)!;
   const groupFieldId = useSelector(Selectors.getKanbanFieldId);
@@ -85,6 +87,10 @@ export const KanbanFieldSettingModal: React.FC<IKanbanFieldSettingModalProps> = 
   const fieldPermissionMap = useSelector(Selectors.getFieldPermissionMap);
   const viewId = useSelector(Selectors.getActiveViewId)!;
   const isCryptoField = Boolean(groupFieldId && Selectors.getFieldRoleByFieldId(fieldPermissionMap, groupFieldId) === ConfigConstant.Role.None);
+  const isViewLock = useShowViewLockModal();
+
+  const { screenIsAtMost } = useResponsive();
+  const isMobile = screenIsAtMost(ScreenSize.md);
 
   const canUseKanbanFields = useMemo(() => {
     const ids = Object.values(fieldMap!).reduce<IField[]>((fields, field) => {
@@ -145,7 +151,7 @@ export const KanbanFieldSettingModal: React.FC<IKanbanFieldSettingModalProps> = 
   useClickAway(() => {
     onClose && onClose();
   }, ref, 'mousedown');
-
+  const modalWidth = isMobile ? 330 : 480;
   return <Modal
     visible
     title={null}
@@ -154,7 +160,7 @@ export const KanbanFieldSettingModal: React.FC<IKanbanFieldSettingModalProps> = 
     destroyOnClose
     footer={null}
     maskClosable
-    width={480}
+    width={modalWidth}
     centered
     getContainer={() => document.getElementById(DATASHEET_VIEW_CONTAINER_ID)!}
     maskStyle={{ position: 'absolute' }}
@@ -164,7 +170,7 @@ export const KanbanFieldSettingModal: React.FC<IKanbanFieldSettingModalProps> = 
     <div style={{ height: modalHeight }} ref={ref} className={styles.kanbanFieldSetting}>
       <div
         className={styles.animation}
-        style={{ transform: `translateX(${route !== KanbanRoute.Init ? -480 : 0}px)` }}
+        style={{ transform: `translateX(${route !== KanbanRoute.Init ? -modalWidth : 0}px)` }}
       >
         <div className={styles.slide}>
           <SettingHead route={route} setRoute={setRoute} />
@@ -176,10 +182,15 @@ export const KanbanFieldSettingModal: React.FC<IKanbanFieldSettingModalProps> = 
               {
                 canUseKanbanFields.map(field => {
                   return <div key={field.id} className={styles.radioWrapper}>
-                    <Radio value={field.id} key={field.id} className={styles.radio} disabled={isCryptoField && field.id === groupFieldId}>
-                      {!isCryptoField && getFieldTypeIcon(field.type)}
-                      {field.name}
-                    </Radio>
+                    <WrapperTooltip wrapper={isViewLock} tip={t(Strings.view_lock_setting_desc)}>
+                      <span>
+                        <Radio value={field.id} key={field.id} className={styles.radio}
+                          disabled={(isCryptoField && field.id === groupFieldId) || isViewLock}>
+                          {!isCryptoField && getFieldTypeIcon(field.type)}
+                          {field.name}
+                        </Radio>
+                      </span>
+                    </WrapperTooltip>
                     <FieldPermissionLock fieldId={field.id} />
                   </div>;
                 })
@@ -189,14 +200,18 @@ export const KanbanFieldSettingModal: React.FC<IKanbanFieldSettingModalProps> = 
           {
             fieldCreatable &&
             <>
-              <div className={styles.fieldItem} onClick={() => setRoute(KanbanRoute.Option)}>
-                <IconAdd className={styles.addIcon} />
-                {t(Strings.kanban_setting_create_option)}
-              </div>
-              <div className={styles.fieldItem} onClick={() => setRoute(KanbanRoute.Member)}>
-                <IconAdd className={styles.addIcon} />
-                {t(Strings.kanban_setting_create_member)}
-              </div>
+              <WrapperTooltip wrapper={isViewLock} tip={t(Strings.view_lock_setting_desc)}>
+                <div className={classNames(styles.fieldItem, { [styles.disabled]: isViewLock })} onClick={() => setRoute(KanbanRoute.Option)}>
+                  <AddOutlined className={styles.addIcon} />
+                  {t(Strings.kanban_setting_create_option)}
+                </div>
+              </WrapperTooltip>
+              <WrapperTooltip wrapper={isViewLock} tip={t(Strings.view_lock_setting_desc)}>
+                <div className={classNames(styles.fieldItem, { [styles.disabled]: isViewLock })} onClick={() => setRoute(KanbanRoute.Member)}>
+                  <AddOutlined className={styles.addIcon} />
+                  {t(Strings.kanban_setting_create_member)}
+                </div>
+              </WrapperTooltip>
             </>
           }
           <Button

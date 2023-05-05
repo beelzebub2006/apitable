@@ -18,13 +18,13 @@
 
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { Selectors, StatusCode, Strings, t } from 'core';
-import { WidgetEmptyPath } from './ui/widget_empty';
-import { getWidgetDatasheet } from 'store';
-import { IReduxState } from '@apitable/core';
 import { useMeta } from 'hooks';
+import { getWidgetDatasheet } from 'store';
+import { Selectors, StatusCode } from 'core';
+import { IReduxState } from '@apitable/core';
+import { ErrorMessage } from './error_message';
 
-export const ErrorHandler: React.FC = props => {
+export const ErrorHandler: React.FC<React.PropsWithChildren<unknown>> = props => {
   let errorCode = useSelector(state => {
     const sourceId = state.widget?.snapshot.sourceId;
     const widgetState = state as any as IReduxState;
@@ -37,6 +37,10 @@ export const ErrorHandler: React.FC = props => {
     }
 
     return null;
+  });
+  const themeName = useSelector(state => {
+    const widgetState = state as any as IReduxState;
+    return widgetState.theme;
   });
 
   const { sourceId } = useMeta();
@@ -75,55 +79,13 @@ export const ErrorHandler: React.FC = props => {
     </h1>;
   }
 
-  const getErrorTip = () => {
-    switch (errorCode) {
-      case StatusCode.NODE_DELETED:
-        return t(Strings.widget_datasheet_has_delete);
-      case StatusCode.NODE_NOT_EXIST:
-        return t(Strings.widget_no_access_datasheet);
-      default:
-        return t(Strings.widget_unknow_err, {
-          info: errorCode,
-        });
-    }
-  };
-
   if (errorCode) {
-    return <div
-      style={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%,-50%)',
-        width: '100%',
-      }}
-    >
-      <div
-        style={{
-          background: `url('data:image/svg+xml;utf8,${encodeURIComponent(WidgetEmptyPath)}') center no-repeat`,
-          backgroundSize: '160px 120px',
-          width: 160,
-          height: 120,
-          margin: '0 auto',
-        }}
+    return (
+      <ErrorMessage 
+        errorCode={errorCode}
+        themeName={themeName}
       />
-      <p
-        style={{
-          textAlign: 'center',
-          fontSize: 14,
-        }}
-      >
-        {
-          getErrorTip()
-        }，
-        <a href={t(Strings.dashboard_access_denied_help_link)} target="_blank" rel="noopener noreferrer" style={{
-          borderBottom: '1px solid',
-          paddingBottom: 2,
-        }}>
-          {t(Strings.know_more)}
-        </a>
-      </p>
-    </div>;
+    );
   }
   return (props.children || null) as any;
 };

@@ -16,12 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { Button, IUseListenTriggerInfo, TextButton, Typography, useListenVisualHeight, useThemeColors } from '@apitable/components';
+import { Button, IUseListenTriggerInfo, TextButton, Typography, useListenVisualHeight, useThemeColors, WrapperTooltip } from '@apitable/components';
 import { CollaCommandName, FieldType, ISortInfo, Selectors, Strings, t } from '@apitable/core';
-import { InformationLargeOutlined } from '@apitable/icons';
+import { QuestionCircleOutlined } from '@apitable/icons';
 import { Col, Row, Switch } from 'antd';
 import produce from 'immer';
 import { ComponentDisplay, ScreenSize } from 'pc/components/common/component_display';
+import { useShowViewLockModal } from 'pc/components/view_lock/use_show_view_lock_modal';
 import { useResponsive } from 'pc/hooks';
 import { resourceService } from 'pc/resource_service';
 import { executeCommandWithMirror } from 'pc/utils/execute_command_with_mirror';
@@ -43,7 +44,7 @@ interface IViewSetting {
 const MIN_HEIGHT = 120;
 const MAX_HEIGHT = 340;
 
-export const ViewSort: React.FC<IViewSetting> = props => {
+export const ViewSort: React.FC<React.PropsWithChildren<IViewSetting>> = props => {
   const { triggerInfo } = props;
   const colors = useThemeColors();
   const activeViewGroupInfo = useSelector(Selectors.getActiveViewGroupInfo);
@@ -51,11 +52,12 @@ export const ViewSort: React.FC<IViewSetting> = props => {
     return Selectors.getFieldMap(state, state.pageParams.datasheetId!);
   })!;
   const sortInfo = useSelector(Selectors.getActiveViewSortInfo);
-  const activityViewId = useSelector(Selectors.getActiveView)!;
+  const activityViewId = useSelector(Selectors.getActiveViewId)!;
   const sortFieldIds = sortInfo ? sortInfo.rules.map(item => item.fieldId) : [];
   const { screenIsAtMost } = useResponsive();
   const isMobile = screenIsAtMost(ScreenSize.md);
   const { editable } = useSelector(Selectors.getPermissions);
+  const isViewLock = useShowViewLockModal();
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { style, onListenResize } = useListenVisualHeight({
@@ -187,14 +189,17 @@ export const ViewSort: React.FC<IViewSetting> = props => {
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant={'h7'}>{t(Strings.set_sort)}</Typography>
             <a href={t(Strings.sort_help_url)} target='_blank' rel='noopener noreferrer'>
-              <InformationLargeOutlined color={colors.thirdLevelText} />
+              <QuestionCircleOutlined color={colors.thirdLevelText} />
             </a>
           </div>
         )}
         {Boolean(sortInfo && sortInfo.rules.length) && (
           <div className={styles.keepSort}>
             {t(Strings.keep_sort)}
-            <Switch checked={sortInfo!.keepSort} size={isMobile ? 'default' : 'small'} style={{ marginLeft: isMobile ? 8 : 4 }} onChange={onChange} />
+            <WrapperTooltip wrapper={isViewLock} tip={t(Strings.view_lock_setting_desc)}>
+              <Switch checked={sortInfo!.keepSort} size={isMobile ? 'default' : 'small'} style={{ marginLeft: isMobile ? 8 : 4 }}
+                onChange={onChange} disabled={isViewLock} />
+            </WrapperTooltip>
           </div>
         )}
       </div>
@@ -248,6 +253,7 @@ export const ViewSort: React.FC<IViewSetting> = props => {
                 props.close((e as any) as React.MouseEvent);
               }}
               block
+              disabled={isViewLock}
             >
               <span style={{ color: colors.thirdLevelText }}>{t(Strings.cancel)}</span>
             </Button>
@@ -258,21 +264,26 @@ export const ViewSort: React.FC<IViewSetting> = props => {
               onClick={e => {
                 props.close((e as any) as React.MouseEvent);
               }}
+              disabled={isViewLock}
             >
               <span style={{ color: colors.thirdLevelText }}>{t(Strings.cancel)}</span>
             </TextButton>
           )}
-          <Button
-            color='primary'
-            size={isMobile ? 'large' : 'small'}
-            onClick={e => {
-              sortInfo && submitSort(sortInfo, true);
-              props.close((e as any) as React.MouseEvent);
-            }}
-            block={isMobile}
-          >
-            <span>{t(Strings.sort_apply)}</span>
-          </Button>
+          <WrapperTooltip wrapper={isViewLock} tip={t(Strings.view_lock_setting_desc)}>
+            <Button
+              color='primary'
+              size={isMobile ? 'large' : 'small'}
+              onClick={e => {
+                sortInfo && submitSort(sortInfo, true);
+                props.close((e as any) as React.MouseEvent);
+              }}
+              block={isMobile}
+              disabled={isViewLock}
+            >
+              <span>{t(Strings.sort_apply)}</span>
+            </Button>
+          </WrapperTooltip>
+
         </div>
       )}
     </div>

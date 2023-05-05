@@ -16,16 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { Button, TextButton, Typography, useThemeColors } from '@apitable/components';
+import { Button, TextButton, Typography, useThemeColors, ThemeName } from '@apitable/components';
 import { ConfigConstant, integrateCdnHost, IReduxState, Strings, t } from '@apitable/core';
 import { ChevronRightOutlined, PlayFilled } from '@apitable/icons';
 // @ts-ignore
-import { showModal } from 'enterprise';
+import { showModal, isDingtalkFunc, isSocialPlatformEnabled } from 'enterprise';
 import { get } from 'lodash';
 import Image from 'next/image';
 import { ComponentDisplay, ScreenSize } from 'pc/components/common/component_display';
-// @ts-ignore
-import { isSocialPlatformEnabled } from 'enterprise';
 import { MobileBar } from 'pc/components/mobile_bar';
 import { Method } from 'pc/components/route_manager/const';
 import { navigationToUrl } from 'pc/components/route_manager/navigation_to_url';
@@ -33,7 +31,8 @@ import { useResponsive } from 'pc/hooks';
 import { getEnvVariables } from 'pc/utils/env';
 import { FC, useState } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
-import WelcomeIcon from 'static/icon/datasheet/datasheet_img_welcome@2x.png';
+import WelcomeIconLight from 'static/icon/datasheet/workbench_empty_light.png';
+import WelcomeIconDark from 'static/icon/datasheet/workbench_empty_dark.png';
 import { CreateDataSheetModal } from './create_datasheet_modal';
 import styles from './style.module.less';
 
@@ -44,7 +43,7 @@ const openUrl = (url: string) => {
   return `${window.location.origin}${url}`;
 };
 
-export const Welcome: FC = () => {
+export const Welcome: FC<React.PropsWithChildren<unknown>> = () => {
   const colors = useThemeColors();
   const [show, setShow] = useState(false);
   const { treeNodesMap, rootId } = useSelector(
@@ -70,7 +69,8 @@ export const Welcome: FC = () => {
 
   const plm = isBindDingTalk ? '?plm=dingtalk' : isBindWecom ? '?plm=wecom' : isBindFeishu ? '?plm=feishu' : '';
   const data = (env.WELCOME_CONFIG ? Object.values(JSON.parse(env.WELCOME_CONFIG)) : []) as Record<string, any>[];
-
+  const themeName = useSelector(state => state.theme);
+  const WelcomeIcon = themeName === ThemeName.Light ? WelcomeIconLight : WelcomeIconDark;
   if (!treeNodesMap[rootId] || !spaceId) {
     return <></>;
   }
@@ -102,18 +102,20 @@ export const Welcome: FC = () => {
                             {item.moreOperation && <div className={styles.rightBtn}>
                               <TextButton
                                 className={styles.moreTemplateBtn}
-                                onClick={() => navigationToUrl(openUrl(`${item.moreOperation.linkUrl}`))}
+                                onClick={() => navigationToUrl(openUrl(`${item.moreOperation.linkUrl}`), { 
+                                  method: isDingtalkFunc?.() ? Method.Push : Method.NewTab 
+                                })}
                               >
                                 <Typography variant='body4' color={colors.fc3}>
                                   {t(Strings[item.moreOperation.textKay])}
                                 </Typography>
-                                <ChevronRightOutlined size={16} color={colors.fc3} />
+                                <ChevronRightOutlined size={12} color={colors.fc3} />
                               </TextButton>
                             </div>}
                           </div>
                         )}
                         <div className={styles.moduleContainer}>
-                          {(item.cards as any).map(card => {
+                          {(item.cards as any).map((card: any) => {
                             return <div
                               key={card.id}
                               className={styles.moduleItem}
@@ -127,7 +129,7 @@ export const Welcome: FC = () => {
                                   return;
                                 }
                                 navigationToUrl(openUrl(`${card.linkUrl}${plm}`), {
-                                  method: card.linkNewTab === 'true' ? Method.NewTab : Method.Push
+                                  method: isDingtalkFunc?.() ? Method.Push : (card.linkNewTab === 'true' ? Method.NewTab : Method.Push)
                                 });
                               }}
                               onMouseDown={() => setDownModuleId(card.id)}
@@ -164,7 +166,7 @@ export const Welcome: FC = () => {
                 </Typography>
                 <div className={styles.container}>
                   {data.map(item =>
-                    (item.cards as any).map(card => (
+                    (item.cards as any).map((card: any) => (
                       <div
                         key={card.id}
                         className={styles.moduleItem}
@@ -178,7 +180,7 @@ export const Welcome: FC = () => {
                             return;
                           }
                           navigationToUrl(openUrl(`${card.linkUrl}${plm}`), {
-                            method: card.linkNewTab === 'true' ? Method.NewTab : Method.Push
+                            method: isDingtalkFunc?.() ? Method.Push : (card.linkNewTab === 'true' ? Method.NewTab : Method.Push)
                           });
                         }}
                         onTouchStart={() => setDownModuleId(card.id)}
@@ -208,7 +210,7 @@ export const Welcome: FC = () => {
       ) : (
         <div className={styles.welcome}>
           <div className={styles.contentWrapper}>
-            <Image src={WelcomeIcon} alt={t(Strings.welcome_interface)} />
+            <Image src={WelcomeIcon} alt={t(Strings.welcome_interface)} width={400} height={300} />
             {treeNodesMap[rootId].permissions.childCreatable ? (
               <>
                 <div className={styles.tip}>{t(Strings.welcome_workspace_tip1)}</div>

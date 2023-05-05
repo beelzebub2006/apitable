@@ -18,19 +18,15 @@
 
 package com.apitable.workspace.mapper;
 
-import java.util.List;
-
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.apitable.AbstractMyBatisMapperTest;
-
+import com.apitable.workspace.dto.NodeTreeDTO;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.jdbc.Sql;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-@Disabled
 public class NodeFavoriteMapperTest extends AbstractMyBatisMapperTest {
 
     @Autowired
@@ -39,8 +35,8 @@ public class NodeFavoriteMapperTest extends AbstractMyBatisMapperTest {
     @Test
     @Sql("/sql/node-favorite-data.sql")
     void testSelectOrderNodeIdByMemberId() {
-        List<String> ids = nodeFavoriteMapper.selectOrderNodeIdByMemberId(41L);
-        assertThat(ids).isNotEmpty();
+        List<NodeTreeDTO> nodes = nodeFavoriteMapper.selectNodeTreeDTOByMemberId(41L);
+        assertThat(nodes).isNotEmpty();
     }
 
     @Test

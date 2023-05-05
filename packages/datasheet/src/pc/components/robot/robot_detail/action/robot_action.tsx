@@ -68,7 +68,7 @@ export const RobotAction = (props: IRobotActionProps) => {
     return null;
   }
 
-  const handleActionFormSubmit = (props) => {
+  const handleActionFormSubmit = (props: any) => {
     const newFormData = props.formData;
     if (!shallowEqual(newFormData, propsFormData)) {
       updateActionInput(action.id, newFormData).then(() => {
@@ -89,7 +89,7 @@ export const RobotAction = (props: IRobotActionProps) => {
   const actionTypeOptions = getNodeTypeOptions(getFilterActionTypes(actionTypes, action.typeId));
   const { uiSchema, schema } = actionType.inputJsonSchema;
   // FIXME: Temporary solution, simple checksum rules should be configurable via json instead of writing code here.
-  const validate = (formData, errors) => {
+  const validate = (formData: any, errors: any) => {
     // FIXME: No business code should appear here
     if (actionType && actionType.endpoint === 'sendLarkMsg') {
       try {
@@ -109,7 +109,7 @@ export const RobotAction = (props: IRobotActionProps) => {
 
   return <NodeForm
     nodeId={action.id}
-    type="action"
+    type='action'
     index={index}
     key={action.id}
     // noValidate
@@ -121,11 +121,11 @@ export const RobotAction = (props: IRobotActionProps) => {
     formData={propsFormData}
     serviceLogo={integrateCdnHost(actionType.service.logo)}
     schema={schema}
-    uiSchema={uiSchema}
+    uiSchema={{ ...uiSchema, password: { 'ui:widget': 'PasswordWidget' }}}
     nodeOutputSchemaList={prevActionSchemaList}
     widgets={
       {
-        TextWidget: (props) => {
+        TextWidget: (props: any) => {
           return <MagicTextField
             {...props}
             nodeOutputSchemaList={prevActionSchemaList}

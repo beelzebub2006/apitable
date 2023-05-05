@@ -18,15 +18,17 @@
 
 import { Field, IViewColumn, Selectors, Strings, t } from '@apitable/core';
 import { useThemeColors } from '@apitable/components';
+import classNames from 'classnames';
+import { useShowViewLockModal } from 'pc/components/view_lock/use_show_view_lock_modal';
 import * as React from 'react';
 import { useSelector } from 'react-redux';
 import styles from './style.module.less';
-import ArrowIcon from 'static/icon/common/common_icon_pulldown_line.svg';
 import { useState } from 'react';
 import { getFieldTypeIcon } from 'pc/components/multi_grid/field_setting';
 import { Popup } from 'pc/components/common/mobile/popup';
 import { renderComputeFieldError } from 'pc/components/multi_grid/header';
 import { Tooltip } from 'pc/components/common';
+import { ChevronDownOutlined } from '@apitable/icons';
 
 interface IViewFieldOptionsMobile {
   onChange: (targetId: string) => void;
@@ -38,7 +40,7 @@ interface IViewFieldOptionsMobile {
   fieldNotFound?: boolean;
 }
 
-export const ViewFieldOptionsMobile: React.FC<IViewFieldOptionsMobile> = props => {
+export const ViewFieldOptionsMobile: React.FC<React.PropsWithChildren<IViewFieldOptionsMobile>> = props => {
   const {
     existFieldIds,
     onChange,
@@ -49,6 +51,7 @@ export const ViewFieldOptionsMobile: React.FC<IViewFieldOptionsMobile> = props =
   const colors = useThemeColors();
   const currentViewAllField = useSelector(state => Selectors.getCurrentView(state))!.columns;
   const fieldMap = useSelector(state => Selectors.getFieldMap(state, state.pageParams.datasheetId!))!;
+  const isViewLock = useShowViewLockModal();
 
   function predicate(item: IViewColumn) {
     if (existFieldIds.includes(item.fieldId)) {
@@ -78,21 +81,20 @@ export const ViewFieldOptionsMobile: React.FC<IViewFieldOptionsMobile> = props =
   return (
     <>
       <div
-        className={styles.addSortRules}
-        onClick={() => setOptionsVisible(true)}
+        className={classNames(styles.addSortRules, { [styles.disabled]: isViewLock })}
+        onClick={() => !isViewLock && setOptionsVisible(true)}
       >
         <span>{getDefaultLabel()}</span>
-        <ArrowIcon
+        <ChevronDownOutlined
           className={styles.arrow}
-          width={16}
-          height={16}
-          fill={colors.thirdLevelText}
+          size={16}
+          color={colors.thirdLevelText}
         />
       </div>
       <Popup
         open={optionsVisible}
         title={t(Strings.title_select_sorting_fields)}
-        height="50%"
+        height='50%'
         onClose={onClose}
         className={styles.optionsListMenu}
       >

@@ -19,7 +19,8 @@
 import { CacheModule, MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {
-  AttachmentField, AutoNumberField, CheckboxField, CreatedByField, CreatedTimeField, CurrencyField, DateTimeField, EmailField, FormulaField,
+  AttachmentField, AutoNumberField,
+  CascaderField, CheckboxField, CreatedByField, CreatedTimeField, CurrencyField, DateTimeField, EmailField, FormulaField,
   LastModifiedByField, LastModifiedTimeField, LinkField, LookUpField, MemberField, MultiSelectField, NumberField, PercentField, PhoneField,
   RatingField, SingleSelectField, SingleTextField, TextField, UrlField,
 } from 'fusion/field';
@@ -37,12 +38,12 @@ import { QueryPipe } from './middleware/pipe/query.pipe';
 import { FieldPipe } from './middleware/pipe/field.pipe';
 import { ApiAuthGuard } from './middleware/guard/api.auth.guard';
 import { FusionApiTransformer } from './transformer/fusion.api.transformer';
-import { DatasheetRecordRepository } from 'database/datasheet/repositories/datasheet.record.repository';
 import { FusionApiFilter } from './filter/fusion.api.filter';
-import { UnitMemberRepository } from 'unit/repositories/unit.member.repository';
 import { UserModule } from 'user/user.module';
 import { NodeModule } from 'node/node.module';
 import { UnitModule } from 'unit/unit.module';
+import { FusionApiV2Controller } from './fusion.api.v2.controller';
+import { FusionNodeApiService } from './services/fusion.node.api.service';
 
 @Module({
   imports: [
@@ -55,15 +56,13 @@ import { UnitModule } from 'unit/unit.module';
     }),
     TypeOrmModule.forFeature([
       ApiUsageRepository,
-      // TODO(Troy): stop using other modules's repositories, use service instead, via importing the module
-      DatasheetRecordRepository,
-      UnitMemberRepository,
     ]),
   ],
-  controllers: [FusionApiController],
+  controllers: [FusionApiController, FusionApiV2Controller],
   providers: [
     FusionApiRecordService,
     FusionApiService,
+    FusionNodeApiService,
     DataBusService,
     QueryPipe,
     FieldPipe,
@@ -72,6 +71,7 @@ import { UnitModule } from 'unit/unit.module';
     // field service
     AttachmentField,
     AutoNumberField,
+    CascaderField,
     CheckboxField,
     CreatedByField,
     CreatedTimeField,

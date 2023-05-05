@@ -16,16 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import { useThemeColors, WrapperTooltip } from '@apitable/components';
 import { BasicValueType, Field, IField, isSelectField, Selectors, Strings, t } from '@apitable/core';
+import { ArrowRightOutlined, CheckboxFilled, CheckboxOutlined } from '@apitable/icons';
 import classNames from 'classnames';
-import { useThemeColors } from '@apitable/components';
+import { useShowViewLockModal } from 'pc/components/view_lock/use_show_view_lock_modal';
 import * as React from 'react';
 import { useSelector } from 'react-redux';
-import CheckedIcon from 'static/icon/datasheet/column/datasheet_icon_checkbox.svg';
-import CheckIcon from 'static/icon/datasheet/datasheet_icon_checkbox_normal.svg';
-import IconArrowGray from 'static/icon/datasheet/datasheet_icon_toward_right_gray.svg';
 import styles from './style.module.less';
-import { Tooltip } from 'pc/components/common/tooltip';
 
 interface IViewRules {
   index: number;
@@ -35,25 +33,30 @@ interface IViewRules {
   invalidTip?: string;
 }
 
-export const ViewRules: React.FC<IViewRules> = props => {
+export const ViewRules: React.FC<React.PropsWithChildren<IViewRules>> = props => {
   const colors = useThemeColors();
   const { onChange, rulesItem, invalid, invalidTip } = props;
   const fieldMap = useSelector(state => Selectors.getFieldMap(state, state.pageParams.datasheetId!))!;
   const field = fieldMap[rulesItem.fieldId];
+  const isViewLock = useShowViewLockModal();
+
   if (!field) {
     return <></>;
   }
   const ascClass = classNames(styles.asc, !rulesItem.desc ? styles.active : '');
   const descClass = classNames(styles.desc, rulesItem.desc ? styles.active : '');
+
   // Returns the appropriate icon based on active.
   function renderCorrectIcon(className: string) {
     if (/active/.test(className)) {
-      return <IconArrowGray fill={colors.staticWhite0} />;
+      return <ArrowRightOutlined color={colors.staticWhite0} />;
     }
-    return <IconArrowGray fill={colors.thirdLevelText} />;
+    return <ArrowRightOutlined color={colors.thirdLevelText} />;
 
   }
-  function changeDescType(e: React.MouseEvent, type: boolean) {
+
+  function changeDescType(_e: React.MouseEvent, type: boolean) {
+    if (isViewLock) return;
     onChange(type);
   }
 
@@ -86,18 +89,18 @@ export const ViewRules: React.FC<IViewRules> = props => {
     return (
       <>
         <div className={ascClass} onClick={e => { changeDescType(e, false); }}>
-          <CheckIcon width={15} height={15} fill={ascIconColor} />
+          <CheckboxOutlined size={15} color={ascIconColor} />
           <div className={styles.iconArrow}>
             {renderCorrectIcon(ascClass)}
           </div>
-          <CheckedIcon width={15} height={15} fill={ascIconColor} />
+          <CheckboxFilled size={15} color={ascIconColor} />
         </div>
         <div className={descClass} onClick={e => { changeDescType(e, true); }}>
-          <CheckedIcon width={15} height={15} fill={descIconColor} />
+          <CheckboxFilled size={15} color={descIconColor} />
           <div className={styles.iconArrow}>
             {renderCorrectIcon(descClass)}
           </div>
-          <CheckIcon width={15} height={15} fill={descIconColor} />
+          <CheckboxOutlined size={15} color={descIconColor} />
         </div>
       </>
     );
@@ -143,7 +146,7 @@ export const ViewRules: React.FC<IViewRules> = props => {
   function judgeFieldRule(field: IField) {
     const { valueType } = Field.bindModel(field);
 
-    // Sort by single-multi-select order, others are displayed according to the return type. 
+    // Sort by single-multi-select order, others are displayed according to the return type.
     // lookup entity fields are handled as string when single-multi-select.
     if (isSelectField(field)) {
       return sortTypeForSequence();
@@ -161,15 +164,9 @@ export const ViewRules: React.FC<IViewRules> = props => {
     }
   }
 
-  return invalid ? (
-    <Tooltip title={invalidTip}>
-      <div className={styles.rules}>
-        {judgeFieldRule(field)}
-      </div>
-    </Tooltip>
-  ) : (
-    <div className={styles.rules}>
+  return <WrapperTooltip wrapper={invalid || isViewLock} tip={invalid ? invalidTip! : t(Strings.view_lock_setting_desc)}>
+    <div className={classNames(styles.rules, { [styles.disabled]: isViewLock })}>
       {judgeFieldRule(field)}
     </div>
-  );
+  </WrapperTooltip>;
 };

@@ -21,11 +21,12 @@ import {
   CollaCommandName, ConfigConstant, FieldType, ILinkField, IOrgChartViewProperty, OrgChartStyleKeyType, Selectors, Strings, t,
 } from '@apitable/core';
 import {
-  AddOutlined, ChevronRightOutlined, ClassroomOutlined, CloseMiddleOutlined, ColumnLinktableFilled, InformationSmallOutlined,
+  AddOutlined, ChevronRightOutlined, ClassOutlined, CloseOutlined, LinktableOutlined, QuestionCircleOutlined,
 } from '@apitable/icons';
 import { Tooltip } from 'antd';
 import { TriggerCommands } from 'modules/shared/apphook/trigger_commands';
 import { FieldPermissionLock } from 'pc/components/field_permission';
+import { useShowViewLockModal } from 'pc/components/view_lock/use_show_view_lock_modal';
 import { resourceService } from 'pc/resource_service';
 import { getEnvVariables } from 'pc/utils/env';
 import { executeCommandWithMirror } from 'pc/utils/execute_command_with_mirror';
@@ -40,7 +41,7 @@ interface IOrgChartSettingPanelProps {
   onAddField: () => void;
 }
 
-export const OrgChartSettingPanel: React.FC<IOrgChartSettingPanelProps> = props => {
+export const OrgChartSettingPanel: React.FC<React.PropsWithChildren<IOrgChartSettingPanelProps>> = props => {
 
   const { onClose, onAddField } = props;
 
@@ -56,6 +57,7 @@ export const OrgChartSettingPanel: React.FC<IOrgChartSettingPanelProps> = props 
   const activeView = useSelector((state) => Selectors.getCurrentView(state)) as IOrgChartViewProperty;
   const datasheetId = useSelector((state) => Selectors.getActiveDatasheetId(state));
   const fieldMap = useSelector((state) => Selectors.getFieldMap(state))!;
+  const isViewLock = useShowViewLockModal();
 
   const options = useMemo(() => {
     const options: IOption[] = [];
@@ -74,7 +76,7 @@ export const OrgChartSettingPanel: React.FC<IOrgChartSettingPanelProps> = props 
           value: column.fieldId,
           label: fieldMap[column.fieldId].name,
           disabled: (fieldMap[column.fieldId] as ILinkField).property.foreignDatasheetId !== datasheetId,
-          prefixIcon: <ColumnLinktableFilled color={colors.thirdLevelText} />,
+          prefixIcon: <LinktableOutlined color={colors.thirdLevelText} />,
           disabledTip: t(Strings.org_chart_choose_a_self_link_field),
         });
       });
@@ -92,13 +94,13 @@ export const OrgChartSettingPanel: React.FC<IOrgChartSettingPanelProps> = props 
     TriggerCommands.open_guide_wizard?.(ConfigConstant.WizardIdConstant.REPLAY_ORG_CHART_VIDEO);
   };
 
-  const handleChange = (key, value) => {
+  const handleChange = (key: OrgChartStyleKeyType, value: string | boolean) => {
     executeCommandWithMirror(() => {
       resourceService.instance!.commandManager.execute({
         cmd: CollaCommandName.SetOrgChartStyle,
         viewId: activeView.id!,
-        styleKey: key,
-        styleValue: value,
+        styleKey: key as any,
+        styleValue: value as any,
       });
     }, {
       style: {
@@ -134,20 +136,20 @@ export const OrgChartSettingPanel: React.FC<IOrgChartSettingPanelProps> = props 
               rel='noopener noreferrer'
               className={styles.helpIcon}
             >
-              <InformationSmallOutlined color={colors.thirdLevelText} />
+              <QuestionCircleOutlined color={colors.thirdLevelText} />
             </a>
           </Tooltip>
         </div>
         <IconButton
           onClick={onClose}
-          icon={CloseMiddleOutlined}
+          icon={CloseOutlined}
           size='small'
         />
       </header>
       {
         getEnvVariables().ARCHITECTURE_SETTING_GUIDE_VIDEO_VISIBLE && <div className={styles.guideWrap} onClick={onPlayGuideVideo}>
           <span className={styles.left}>
-            <ClassroomOutlined size={16} color={colors.primaryColor} />
+            <ClassOutlined size={16} color={colors.primaryColor} />
             <Typography variant='body3' color={colors.secondLevelText}>
               {t(Strings.org_chart_play_guide_video_title)}
             </Typography>
@@ -170,6 +172,8 @@ export const OrgChartSettingPanel: React.FC<IOrgChartSettingPanelProps> = props 
               triggerStyle={{
                 border: (isFieldDeleted || isFieldInvalid) ? `1px solid ${colors.rc08}` : 'none'
               }}
+              disabled={isViewLock}
+              disabledTip={t(Strings.view_lock_setting_desc)}
             />
             {(isFieldDeleted || isFieldInvalid) && linkFieldId && (
               <span className={styles.errorText}>
@@ -190,11 +194,21 @@ export const OrgChartSettingPanel: React.FC<IOrgChartSettingPanelProps> = props 
           {t(Strings.design_chart_style)}
         </Typography>
         <div className={styles.settingLayout}>
-          <div className={styles.selectField}>
-            <Switch
-              onChange={handleSwitch}
-              checked={horizontal}
-            />
+          <div className={styles.selectField} style={{ display: 'flex', alignItems: 'center' }}>
+            {
+              isViewLock ? <Tooltip title={t(Strings.view_lock_setting_desc)}>
+                <span>
+                  <Switch
+                    onChange={handleSwitch}
+                    checked={horizontal}
+                    disabled={isViewLock}
+                  />
+                </span>
+              </Tooltip> : <Switch
+                onChange={handleSwitch}
+                checked={horizontal}
+              />
+            }
             <span style={{ marginLeft: 8 }}>{t(Strings.org_chart_layout_horizontal)}</span>
           </div>
         </div>

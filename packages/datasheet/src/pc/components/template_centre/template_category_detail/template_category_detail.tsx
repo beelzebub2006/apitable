@@ -16,17 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import { ThemeName, Typography } from '@apitable/components';
 import {
   ConfigConstant, integrateCdnHost, IReduxState, ITemplate, ITemplateCategory, Navigation, Settings, StoreActions, Strings, t,
 } from '@apitable/core';
-import { Typography } from '@apitable/components';
 import { Col, Row } from 'antd';
-import { TemplateListContext } from 'context/template_list';
+// @ts-ignore
+import { isDingtalkFunc, isWecomFunc } from 'enterprise';
 import parser from 'html-react-parser';
 import { isEmpty } from 'lodash';
 import Image from 'next/image';
-// @ts-ignore
-import { isWecomFunc } from 'enterprise';
+import { Method } from 'pc/components/route_manager/const';
 import { navigationToUrl } from 'pc/components/route_manager/navigation_to_url';
 import { Router } from 'pc/components/route_manager/router';
 // import { Modal } from 'pc/components/common';
@@ -34,9 +34,10 @@ import { useRequest } from 'pc/hooks';
 import { useAppDispatch } from 'pc/hooks/use_app_dispatch';
 import { useTemplateRequest } from 'pc/hooks/use_template_request';
 import { getEnvVariables, isMobileApp } from 'pc/utils/env';
-import React, { FC, useContext, useEffect, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-import templateEmptyPng from 'static/icon/template/template_img_empty.png';
+import NotDataImgDark from 'static/icon/datasheet/empty_state_dark.png';
+import NotDataImgLight from 'static/icon/datasheet/empty_state_light.png';
 import { imgUrl } from '../template_choice';
 import { TemplateItem } from '../template_item';
 import styles from './style.module.less';
@@ -49,9 +50,8 @@ export interface ITemplateCategoryDetailProps {
   setUsingTemplate: React.Dispatch<React.SetStateAction<string>>;
 }
 
-export const TemplateCategoryDetail: FC<ITemplateCategoryDetailProps> = props => {
+export const TemplateCategoryDetail: FC<React.PropsWithChildren<ITemplateCategoryDetailProps>> = props => {
   const { setUsingTemplate, templateCategory } = props;
-  const { templateListData } = useContext(TemplateListContext);
   const [templateList, setTemplateList] = useState<ITemplate[] | {
     albums: {
       albumId: string;
@@ -60,9 +60,7 @@ export const TemplateCategoryDetail: FC<ITemplateCategoryDetailProps> = props =>
       description: string;
     }[];
     templates: ITemplate[];
-  } | null>(() => {
-    return templateListData || null;
-  });
+  } | null>(null);
   const [isOfficial, setIsOfficial] = useState(true);
   const dispatch = useAppDispatch();
   const user = useSelector((state: IReduxState) => state.user.info);
@@ -76,6 +74,8 @@ export const TemplateCategoryDetail: FC<ITemplateCategoryDetailProps> = props =>
   const { run: getTemplateCategories, data: templateCategories } =
     useRequest<ITemplate[]>(getTemplateCategoriesReq, { manual: true });
 
+  const themeName = useSelector(state => state.theme);
+  const templateEmptyPng = themeName === ThemeName.Light ? NotDataImgLight : NotDataImgDark;
   useEffect(() => {
     // Login status is required to access the space station template
     if (categoryId === 'tpcprivate' && user) {
@@ -122,7 +122,7 @@ export const TemplateCategoryDetail: FC<ITemplateCategoryDetailProps> = props =>
     }
   };
 
-  const openTemplateDetail = ({ templateId }) => {
+  const openTemplateDetail = ({ templateId }: { templateId: string }) => {
     Router.push(Navigation.TEMPLATE, {
       params: {
         spaceId,
@@ -138,7 +138,7 @@ export const TemplateCategoryDetail: FC<ITemplateCategoryDetailProps> = props =>
 
   const currentCategory = templateCategory.find(item => item.categoryCode === categoryId);
 
-  const openTemplateAlbumDetail = ({ templateId }) => {
+  const openTemplateAlbumDetail = ({ templateId }: { templateId: string }) => {
     Router.push(Navigation.TEMPLATE, {
       params: {
         spaceId,
@@ -154,7 +154,7 @@ export const TemplateCategoryDetail: FC<ITemplateCategoryDetailProps> = props =>
         (isEmpty(templateList)) ?
           (
             <div className={styles.listEmpty}>
-              <Image src={templateEmptyPng} alt={t(Strings.template_no_template)} />
+              <Image src={templateEmptyPng} alt={t(Strings.template_no_template)} width={320} height={240} />
               <div className={styles.text}>{parser(t(Strings.how_create_template))}</div>
             </div>
           ) :
@@ -170,7 +170,9 @@ export const TemplateCategoryDetail: FC<ITemplateCategoryDetailProps> = props =>
                       <Typography className={styles.notFoundTip} variant='body2' align='center'>
                         <span
                           className={styles.text}
-                          onClick={() => navigationToUrl(`${env.TEMPLATE_FEEDBACK_FORM_URL}`)}
+                          onClick={() => navigationToUrl(`${env.TEMPLATE_FEEDBACK_FORM_URL}`, {
+                            method: isDingtalkFunc?.() ? Method.Push : Method.NewTab
+                          })}
                         >
                           {t(Strings.template_not_found)}
                         </span>

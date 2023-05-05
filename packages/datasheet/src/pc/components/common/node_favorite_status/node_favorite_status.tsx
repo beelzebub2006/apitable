@@ -16,34 +16,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { FC, useContext } from 'react';
+import { FC } from 'react';
 import styles from './style.module.less';
-import { FavoriteOutlined, FavoriteFilled } from '@apitable/icons';
+import { StarOutlined, StarFilled } from '@apitable/icons';
 import { useCatalogTreeRequest } from 'pc/hooks';
 import { useRequest } from 'pc/hooks';
-import { t, Strings, IReduxState } from '@apitable/core';
+import { t, Strings } from '@apitable/core';
 import { Tooltip } from '../tooltip';
-import { WorkbenchSideContext } from 'pc/components/common_side/workbench_side/workbench_side_context';
-import { useSelector } from 'react-redux';
 
 export interface INodeFavoriteStatusProps {
   nodeId: string;
   enabled: boolean;
 }
 
-export const NodeFavoriteStatus: FC<INodeFavoriteStatusProps> = ({ nodeId, enabled }) => {
+export const NodeFavoriteStatus: FC<React.PropsWithChildren<INodeFavoriteStatusProps>> = ({ nodeId, enabled }) => {
   const { updateNodeFavoriteStatusReq } = useCatalogTreeRequest();
   const { run: updateNodeFavoriteStatus, loading } = useRequest(updateNodeFavoriteStatusReq, { manual: true });
-  const treeNodesMap = useSelector((state: IReduxState) => state.catalogTree.treeNodesMap);
-
-  const { openFavorite } = useContext(WorkbenchSideContext);
 
   const clickHandler = () => {
     if (loading) { return; }
     updateNodeFavoriteStatus(nodeId);
-    if (!treeNodesMap[nodeId].nodeFavorite) {
-      openFavorite(); 
-    }
   };
 
   return (
@@ -51,8 +43,8 @@ export const NodeFavoriteStatus: FC<INodeFavoriteStatusProps> = ({ nodeId, enabl
       <div className={styles.favoriteStatus} onClick={clickHandler}>
         {
           enabled ?
-            <FavoriteFilled size={16} className={styles.favorite} /> :
-            <FavoriteOutlined size={16} className={styles.unFavorite} />
+            <StarFilled size={16} className={styles.favorite} /> :
+            <StarOutlined size={16} className={styles.unFavorite} />
         }
       </div>
     </Tooltip>

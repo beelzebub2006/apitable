@@ -16,7 +16,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { Module } from '@nestjs/common';
+<<<<<<<< HEAD:packages/icons/src/components/comment_bj_filled.tsx
+/* eslint-disable max-len */
+import React from 'react';
+import { makeIcon, IIconProps } from '../utils/icon';
+
+export const CommentBjFilled: React.FC<IIconProps> = makeIcon({
+  Path: ({ colors }) => <>
+    <path d="M5 5C3.9 5 3 5.9 3 7V17C3 18.1 3.9 19 5 19H7V20.5C7 21.2 7.7 21.7 8.4 21.4L14.8 18.9H19C20.1 18.9 21 18 21 16.9V7C21 5.9 20.1 5 19 5H5Z" fill={ colors[0] } fillRule="evenodd" clipRule="evenodd"/>
+
+  </>,
+  name: 'comment_bj_filled',
+  defaultColors: ['#C4C4C4'],
+  colorful: false,
+  allPathData: ['M5 5C3.9 5 3 5.9 3 7V17C3 18.1 3.9 19 5 19H7V20.5C7 21.2 7.7 21.7 8.4 21.4L14.8 18.9H19C20.1 18.9 21 18 21 16.9V7C21 5.9 20.1 5 19 5H5Z'],
+  width: '24',
+  height: '24',
+  viewBox: '0 0 24 24',
+});
+========
+import { forwardRef, Module } from '@nestjs/common';
 import { NodeModule } from 'node/node.module';
 import { ResourceModule } from 'database/resource/resource.module';
 import { AttachmentController } from './controllers/attachment.controller';
@@ -30,10 +49,11 @@ import { HttpConfigService } from 'shared/services/config/http.config.service';
       useClass: HttpConfigService,
     }),
     ResourceModule,
-    NodeModule
+    forwardRef(()=>NodeModule),
   ],
   controllers: [AttachmentController],
   providers: [AttachmentService],
   exports: [AttachmentService],
 })
 export class AttachmentModule {}
+>>>>>>>> remote/develop:packages/room-server/src/database/attachment/attachment.module.ts

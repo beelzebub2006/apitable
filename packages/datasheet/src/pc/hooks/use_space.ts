@@ -17,7 +17,7 @@
  */
 
 import {
-  Api, IAddIsActivedMemberInfo, ISpaceBasicInfo, ISpaceInfo, IUpdateMemberInfo, IUserInfo, StatusCode, StoreActions, Strings, t,
+  Api, IAddIsActivedMemberInfo, ISpaceBasicInfo, ISpaceInfo, IUpdateMemberInfo, StatusCode, StoreActions, Strings, t,
 } from '@apitable/core';
 import { AxiosResponse } from 'axios';
 import { Message } from 'pc/components/common';
@@ -54,31 +54,24 @@ export const useChangeLogo = (spaceId: string, cancel?: () => void) => {
   return { setLogo, logo };
 };
 // Adding sub-sectors
-export const useCreateSubTeam = (name: string, spaceId: string, superId: string, user: IUserInfo) => {
+export const useCreateSubTeam = (name: string, superId: string): { createTeam: () => Promise<void>; } => {
   const dispatch = useAppDispatch();
-  const [start, setStart] = useState(false);
-  useEffect(() => {
-    start && Api.createTeam(name, superId).then(res => {
-      const { success } = res.data;
-      if (success) {
-        dispatch(StoreActions.getTeamListDataInSpace(spaceId, user));
-        Message.success({ content: t(Strings.create_team_success) });
-      } else {
-        Message.error({ content: t(Strings.create_team_fail) });
-      }
-    });
-
-    return () => {
-      setStart(false);
-    };
-  }, [start, dispatch, name, spaceId, superId, user]);
-  return [setStart];
+  const createTeam = () => Api.createTeam(name, superId).then(res => {
+    const { success } = res.data;
+    if (success) {
+      dispatch(StoreActions.getSubTeam(superId));
+      Message.success({ content: t(Strings.create_team_success) });
+    } else {
+      Message.error({ content: t(Strings.create_team_fail) });
+    }
+  });
+  return { createTeam };
 };
 
 // Edit member information
 export const useEditMember = (
   data: IUpdateMemberInfo,
-  spaceId: string,
+  _spaceId: string,
   teamId: string,
   pageNo: number,
   cancel: () => void,

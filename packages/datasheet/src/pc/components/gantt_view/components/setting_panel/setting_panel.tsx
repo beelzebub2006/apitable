@@ -16,14 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { black, IOption, Select, Switch, Tooltip, Typography } from '@apitable/components';
+import { black, IOption, Select, Switch, Tooltip, Typography, WrapperTooltip } from '@apitable/components';
 import {
   BasicValueType, CollaCommandName, ConfigConstant, DateTimeField, DEFAULT_WORK_DAYS, ExecuteResult, Field, FieldType, GanttColorType,
   GanttStyleKeyType, getNewId, getUniqName, IDPrefix, IGanttViewColumn, IGanttViewProperty, IGanttViewStatus, ILinkField, ISetRecordOptions,
   LinkFieldSet, Selectors, StoreActions, Strings, t,
 } from '@apitable/core';
 import {
-  AddOutlined, ChevronRightOutlined, ClassroomOutlined, CloseMiddleOutlined, ColumnLinktableFilled, InformationSmallOutlined,
+  AddOutlined, ChevronRightOutlined, ClassOutlined, CloseOutlined, LinktableOutlined, QuestionCircleOutlined, WarnCircleOutlined, ChevronDownOutlined
 } from '@apitable/icons';
 import { Select as MultiSelect } from 'antd';
 import classNames from 'classnames';
@@ -38,6 +38,7 @@ import { FieldPermissionLock } from 'pc/components/field_permission';
 import { autoTaskScheduling } from 'pc/components/gantt_view/utils';
 import { KonvaGridContext } from 'pc/components/konva_grid';
 import { getFieldTypeIcon } from 'pc/components/multi_grid/field_setting';
+import { useShowViewLockModal } from 'pc/components/view_lock/use_show_view_lock_modal';
 import { resourceService } from 'pc/resource_service';
 import { getEnvVariables } from 'pc/utils/env';
 import { executeCommandWithMirror } from 'pc/utils/execute_command_with_mirror';
@@ -102,7 +103,7 @@ interface ISettingPanelProps {
   ganttViewStatus: IGanttViewStatus;
 }
 
-export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) => {
+export const SettingPanel: FC<React.PropsWithChildren<ISettingPanelProps>> = memo(({ ganttViewStatus }) => {
   const { theme } = useContext(KonvaGridContext);
   const colors = theme.color;
   const { view, fieldMap, ganttStyle, fieldPermissionMap, permissions, exitFieldNames } = useSelector(state => {
@@ -142,6 +143,7 @@ export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) =
   const isCryptoLinkField = Boolean(linkFieldRole && linkFieldRole === ConfigConstant.Role.None);
   const linkField = fieldMap[linkFieldId];
   const visibleRows = useSelector(state => Selectors.getVisibleRows(state));
+  const isViewLock = useShowViewLockModal();
 
   const fieldOptions = columns
     .map(({ fieldId }) => {
@@ -189,7 +191,7 @@ export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) =
           value: columnFieldId,
           label: fieldMap[columnFieldId].name,
           disabled: (fieldMap[columnFieldId] as ILinkField).property.foreignDatasheetId !== datasheetId,
-          prefixIcon: <ColumnLinktableFilled color={colors.thirdLevelText} />,
+          prefixIcon: <LinktableOutlined color={colors.thirdLevelText} />,
           disabledTip: t(Strings.org_chart_choose_a_self_link_field),
         });
       });
@@ -220,7 +222,7 @@ export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) =
     });
   };
 
-  const onGanttStyleChange = (styleKey, styleValue) => {
+  const onGanttStyleChange = (styleKey: GanttStyleKeyType, styleValue: any) => {
     executeCommandWithMirror(
       () => {
         resourceService.instance!.commandManager.execute({
@@ -287,21 +289,22 @@ export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) =
     onGanttStyleChange(styleKey, value);
   };
 
-  const onColorOptionSelect = option => {
+  const onColorOptionSelect = (option: { value: any; }) => {
     onGanttStyleChange(GanttStyleKeyType.ColorOption, {
       ...colorOption,
       type: option.value,
     });
   };
 
-  const onSingleFieldSelect = option => {
+  const onSingleFieldSelect = (option: { value: any; }) => {
     onGanttStyleChange(GanttStyleKeyType.ColorOption, {
       ...colorOption,
       fieldId: option.value,
     });
   };
 
-  const onColorPick = (type: OptionSetting, id: string, value: string | number) => {
+  const onColorPick = (type: OptionSetting, _id: string, value: string | number) => {
+    if (isViewLock) return;
     if (type === OptionSetting.SETCOLOR) {
       onGanttStyleChange(GanttStyleKeyType.ColorOption, {
         ...colorOption,
@@ -361,7 +364,7 @@ export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) =
     }
   };
 
-  const onLinkFieldIdChange = option => {
+  const onLinkFieldIdChange = (option: any) => {
     if (option.value === LinkFieldSet.Add) {
       onFieldSelect(GanttStyleKeyType.LinkFieldId, LinkFieldSet.Add);
     } else {
@@ -403,18 +406,18 @@ export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) =
           <Typography variant='body1'>{t(Strings.gantt_setting)}</Typography>
           <Tooltip content={t(Strings.gantt_setting_help_tips)}>
             <a href={t(Strings.gantt_setting_help_url)} target='_blank' rel='noopener noreferrer' className={styles.helpIcon}>
-              <InformationSmallOutlined color={colors.thirdLevelText} />
+              <QuestionCircleOutlined color={colors.thirdLevelText} />
             </a>
           </Tooltip>
         </div>
-        <CloseMiddleOutlined className={styles.closeIcon} size={16} color={black[500]} onClick={onClose} />
+        <CloseOutlined className={styles.closeIcon} size={16} color={black[500]} onClick={onClose} />
       </header>
 
       {/* Video teaching button */}
       {
         getEnvVariables().GANTT_SETTING_GUIDE_VIDEO_VISIBLE && <div className={styles.guideWrap} onClick={onPlayGuideVideo}>
           <span className={styles.left}>
-            <ClassroomOutlined size={16} color={colors.primaryColor} />
+            <ClassOutlined size={16} color={colors.primaryColor} />
             <Typography variant='body3' color={colors.secondLevelText}>
               {t(Strings.play_guide_video_of_gantt_view)}
             </Typography>
@@ -443,6 +446,8 @@ export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) =
                     width: 128,
                     border: fieldId == null ? `1px solid ${colors.rc08}` : 'none',
                   }}
+                  disabled={isViewLock}
+                  disabledTip={t(Strings.view_lock_setting_desc)}
                 >
                   {fieldOptions.map((option, index) => {
                     return (
@@ -467,6 +472,12 @@ export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) =
           })}
         </div>
         {noRequiredField && <span className={styles.errorText}>{t(Strings.gantt_pick_two_dates_tips)}</span>}
+        {startFieldId && endFieldId && fieldMap[startFieldId]?.property.timeZone !== fieldMap[endFieldId]?.property.timeZone && (
+          <div className={styles.timeZoneTip}>
+            <WarnCircleOutlined color={colors.textCommonTertiary} />
+            <span>{t(Strings.time_zone_inconsistent_tips)}</span>
+          </div>
+        )}
       </div>
 
       {/* Set taskbar colour */}
@@ -478,7 +489,7 @@ export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) =
           {
             env.GANTT_CONFIG_COLOR_HELP_URL && <Tooltip content={t(Strings.gantt_config_color_help)}>
               <a href={env.GANTT_CONFIG_COLOR_HELP_URL} target='_blank' rel='noopener noreferrer' className={styles.helpIcon}>
-                <InformationSmallOutlined color={colors.thirdLevelText} />
+                <QuestionCircleOutlined color={colors.thirdLevelText} />
               </a>
             </Tooltip>
           }
@@ -491,6 +502,8 @@ export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) =
             onSelected={onColorOptionSelect}
             dropdownMatchSelectWidth
             triggerStyle={{ width: 128 }}
+            disabled={isViewLock}
+            disabledTip={t(Strings.view_lock_setting_desc)}
           />
           {colorOption.type === GanttColorType.SingleSelect && (
             <Select
@@ -515,10 +528,12 @@ export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) =
                 }}
                 onChange={onColorPick}
                 style={{ flexWrap: 'unset' }}
+                disabled={isViewLock}
               />
             </div>
             <ColorPicker
               onChange={onColorPick}
+              disabled={isViewLock}
               option={{
                 id: '',
                 name: '',
@@ -526,9 +541,14 @@ export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) =
               }}
               mask
               triggerComponent={
-                <Typography variant='body3' className={styles.more} component={'span'}>
-                  {t(Strings.gantt_color_more)}
-                </Typography>
+                <WrapperTooltip wrapper={isViewLock} tip={t(Strings.view_lock_setting_desc)}>
+                  <div
+                    style={{ display: 'inline-block', cursor: isViewLock ? 'not-allowed' : '', color: isViewLock ? colors.textCommonDisabled : '' }}>
+                    <Typography variant='body3' className={styles.more} component={'span'}>
+                      {t(Strings.gantt_color_more)}
+                    </Typography>
+                  </div>
+                </WrapperTooltip>
               }
             />
           </>
@@ -544,41 +564,48 @@ export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) =
         <Typography className={styles.settingDesc} variant='body4'>
           {t(Strings.gantt_config_workdays_a_week)}
         </Typography>
-
-        <div className={styles.settingLayout}>
-          <MultiSelect
-            mode='multiple'
-            showArrow
-            showSearch={false}
-            className={styles.workDaySelect}
-            style={{ width: '100%' }}
-            dropdownClassName={styles.workDaySelectDropdown}
-            virtual={false}
-            tagRender={({ label }) => <span className={styles.workDayTag}>{label}</span>}
-            onChange={onWorkDayChange}
-            tokenSeparators={[',']}
-            defaultValue={workDays}
-            size={'middle'}
-          >
-            {weekOptions.map(item => {
-              return (
-                <MultiOption
-                  key={item.value}
-                  value={item.value}
-                  style={{
-                    margin: '0 8px',
-                    borderRadius: 8,
-                  }}
-                >
-                  {item.selectLabel}
-                </MultiOption>
-              );
-            })}
-          </MultiSelect>
-        </div>
+        <WrapperTooltip wrapper={isViewLock} tip={t(Strings.view_lock_setting_desc)}>
+          <div className={styles.settingLayout}>
+            <MultiSelect
+              mode='multiple'
+              showArrow
+              showSearch={false}
+              className={classNames(styles.workDaySelect, { [styles.disabled]: isViewLock })}
+              style={{ width: '100%' }}
+              dropdownClassName={styles.workDaySelectDropdown}
+              virtual={false}
+              tagRender={({ label }) => <span className={styles.workDayTag}>{label}</span>}
+              onChange={onWorkDayChange}
+              tokenSeparators={[',']}
+              defaultValue={workDays}
+              size={'middle'}
+              suffixIcon={<ChevronDownOutlined color={colors.black[500]} />}
+              disabled={isViewLock}
+            >
+              {weekOptions.map(item => {
+                return (
+                  <MultiOption
+                    key={item.value}
+                    value={item.value}
+                    style={{
+                      margin: '0 8px',
+                      borderRadius: 8,
+                    }}
+                  >
+                    {item.selectLabel}
+                  </MultiOption>
+                );
+              })}
+            </MultiSelect>
+          </div>
+        </WrapperTooltip>
 
         <div className={styles.settingLayout} style={{ marginTop: 16 }}>
-          <Switch checked={Boolean(onlyCalcWorkDay)} onClick={onSwitchClick} />
+          {
+            isViewLock ? <Tooltip content={t(Strings.view_lock_setting_desc)}>
+              <Switch checked={Boolean(onlyCalcWorkDay)} onClick={onSwitchClick} disabled={isViewLock} />
+            </Tooltip> : <Switch checked={Boolean(onlyCalcWorkDay)} onClick={onSwitchClick} />
+          }
           <span style={{ marginLeft: 4 }}>{t(Strings.gantt_config_only_count_workdays)}</span>
         </div>
       </div>
@@ -589,7 +616,7 @@ export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) =
           </Typography>
           <Tooltip content={t(Strings.gantt_config_color_help)}>
             <a href={getEnvVariables().GANTT_SET_TASK_RELATION_HELP_URL} target='_blank' rel='noopener noreferrer' className={styles.helpIcon}>
-              <InformationSmallOutlined color={colors.thirdLevelText} />
+              <QuestionCircleOutlined color={colors.thirdLevelText} />
             </a>
           </Tooltip>
         </div>
@@ -601,12 +628,18 @@ export const SettingPanel: FC<ISettingPanelProps> = memo(({ ganttViewStatus }) =
               options={linkFieldOptions}
               dropdownMatchSelectWidth
               placeholder={t(Strings.org_chart_pick_link_field)}
+              disabled={isViewLock}
+              disabledTip={t(Strings.view_lock_setting_desc)}
             />
           </div>
         </div>
         {linkField && (
           <div className={styles.settingLayout} style={{ marginTop: 16 }}>
-            <Switch checked={Boolean(autoTaskLayout)} onClick={onSwitchAutoTaskLayoutClick} />
+            {
+              isViewLock ? <Tooltip content={t(Strings.view_lock_setting_desc)}>
+                <Switch checked={Boolean(autoTaskLayout)} onClick={onSwitchAutoTaskLayoutClick} />
+              </Tooltip> : <Switch checked={Boolean(onlyCalcWorkDay)} onClick={onSwitchClick} />
+            }
             <span style={{ marginLeft: 4 }}>{t(Strings.gantt_open_auto_schedule_switch)}</span>
           </div>
         )}

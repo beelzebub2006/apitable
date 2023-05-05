@@ -16,39 +16,34 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import { IUseListenTriggerInfo, useListenVisualHeight, useThemeColors, WrapperTooltip } from '@apitable/components';
 import {
-  BasicValueType,
-  CollaCommandName,
-  Field,
-  FilterConjunction as CoreFilterConjunction,
-  FilterDuration,
-  getNewId,
-  IDPrefix,
-  IFilterInfo,
-  IGridViewProperty,
-  Selectors,
-  Strings,
-  t,
+  BasicValueType, CollaCommandName, Field, FilterConjunction as CoreFilterConjunction, FilterDuration, getNewId, IDPrefix, IFilterInfo,
+  IGridViewProperty, Selectors, Strings, t
 } from '@apitable/core';
+import { AddOutlined } from '@apitable/icons';
+import classNames from 'classnames';
+import { PopUpTitle } from 'pc/components/common';
+import { ComponentDisplay, ScreenSize } from 'pc/components/common/component_display';
+import { useShowViewLockModal } from 'pc/components/view_lock/use_show_view_lock_modal';
+import { useResponsive } from 'pc/hooks';
 import { resourceService } from 'pc/resource_service';
-import { useCallback, useEffect, useRef } from 'react';
+import { executeCommandWithMirror } from 'pc/utils/execute_command_with_mirror';
 import * as React from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
-import IconAdd from 'static/icon/common/common_icon_add_content.svg';
-import { useThemeColors, useListenVisualHeight } from '@apitable/components';
+import { SyncViewTip } from '../sync_view_tip';
 import ConditionList from './condition_list';
 import { ExecuteFilterFn } from './interface';
-import classNames from 'classnames';
 import styles from './style.module.less';
-import { PopUpTitle } from 'pc/components/common';
-import { SyncViewTip } from '../sync_view_tip';
-import { ComponentDisplay, ScreenSize } from 'pc/components/common/component_display';
-import { executeCommandWithMirror } from 'pc/utils/execute_command_with_mirror';
-import { useResponsive } from 'pc/hooks';
+
+interface IViewFilter {
+  triggerInfo?: IUseListenTriggerInfo;
+}
 
 const MIN_HEIGHT = 70;
 const MAX_HEIGHT = 260;
-const ViewFilterBase = props => {
+const ViewFilterBase = (props: IViewFilter) => {
   const { triggerInfo } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const childRef = useRef<HTMLDivElement>(null);
@@ -60,6 +55,8 @@ const ViewFilterBase = props => {
   const fieldMap = useSelector(state => Selectors.getFieldMap(state, state.pageParams.datasheetId!))!;
   const activeViewFilter = useSelector(state => Selectors.getFilterInfo(state))!;
   const scrollShadowRef = useRef<HTMLDivElement>(null);
+  const isViewLock = useShowViewLockModal();
+
   const { style, onListenResize } = useListenVisualHeight({
     listenNode: containerRef,
     childNode: childRef,
@@ -113,11 +110,12 @@ const ViewFilterBase = props => {
   // Mark if a new filter has been added, scrolling directly to the bottom in the commandForAddViewFilter function is not valid.
   const added = useRef<boolean>(false);
 
-  function commandForAddViewFilter(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+  function commandForAddViewFilter(_e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     const firstColumns = fieldMap[columns[0].fieldId];
     const exitIds = activeViewFilter ? activeViewFilter.conditions.map(item => item.conditionId) : [];
     const acceptFilterOperators = Field.bindModel(firstColumns).acceptFilterOperators;
     const newOperate = acceptFilterOperators[0];
+
     filterCommand({
       conjunction: activeViewFilter ? activeViewFilter.conjunction : CoreFilterConjunction.And,
       conditions: [
@@ -144,13 +142,14 @@ const ViewFilterBase = props => {
   }, [activeViewFilter?.conditions.length, onListenResize]);
 
   function deleteFilter(idx: number) {
+    if (isViewLock) return;
     if (activeViewFilter!.conditions.length === 1) {
       filterCommand(null);
       return;
     }
     filterCommand({
       conjunction: activeViewFilter!.conjunction,
-      conditions: activeViewFilter!.conditions.filter((item, index) => {
+      conditions: activeViewFilter!.conditions.filter((_item, index) => {
         return index !== idx;
       }),
     });
@@ -166,12 +165,20 @@ const ViewFilterBase = props => {
         <ConditionList filterInfo={activeViewFilter} fieldMap={fieldMap} changeFilter={changeFilter} deleteFilter={deleteFilter} />
         <div ref={scrollShadowRef} className={classNames(!isMobile && styles.scrollShadow)} />
       </div>
-      <div className={styles.addNewButton} onClick={commandForAddViewFilter}>
-        <div className={styles.iconAdd}>
-          <IconAdd width={16} height={16} fill={colors.thirdLevelText} />
-        </div>
-        {t(Strings.add_filter)}
-      </div>
+      {
+        <WrapperTooltip wrapper={isViewLock} tip={t(Strings.view_lock_setting_desc)}>
+          <div
+            className={classNames(styles.addNewButton, { [styles.disabled]: isViewLock })}
+            onClick={!isViewLock ? commandForAddViewFilter : undefined}
+          >
+            <div className={styles.iconAdd}>
+              <AddOutlined size={16} color={colors.thirdLevelText} />
+            </div>
+            {t(Strings.add_filter)}
+          </div>
+        </WrapperTooltip>
+      }
+
     </div>
   );
 };

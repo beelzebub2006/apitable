@@ -16,17 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import { IRecordMap } from '@apitable/core';
 import { Injectable } from '@nestjs/common';
-import { DatasheetRecordRepository } from 'database/datasheet/repositories/datasheet.record.repository';
+import { DatasheetRecordService } from 'database/datasheet/services/datasheet.record.service';
 import { difference } from 'lodash';
+import { USE_NATIVE_MODULE } from 'shared/common';
 import { ApiException, ApiTipId } from 'shared/exception';
+import { NativeService } from 'shared/services/native/native.service';
 
 @Injectable()
 export class FusionApiRecordService {
-  constructor(
-    private readonly recordRepository: DatasheetRecordRepository
-  ) {
-  }
+  constructor(private readonly recordService: DatasheetRecordService, private readonly nativeService: NativeService) {}
 
   /**
    * Check if recordId and table ID match
@@ -38,7 +38,7 @@ export class FusionApiRecordService {
    * @throws ApiException
    */
   public async validateRecordExists(dstId: string, recordIds: string[], error: ApiTipId) {
-    const dbRecordIds = await this.recordRepository.selectIdsByDstIdAndRecordIds(dstId, recordIds);
+    const dbRecordIds = await this.recordService.getIdsByDstIdAndRecordIds(dstId, recordIds);
     if (!dbRecordIds?.length) {
       throw ApiException.tipError(error, { recordId: recordIds.join(', ') });
     }
@@ -46,5 +46,12 @@ export class FusionApiRecordService {
     if (diffs.length) {
       throw ApiException.tipError(error, { recordId: diffs.join(',') });
     }
+  }
+
+  public async getBasicRecordsByRecordIds(dstId: string, recordIds: string[]): Promise<IRecordMap> {
+    if (USE_NATIVE_MODULE) {
+      return await this.nativeService.getRecords(dstId, recordIds, false, false);
+    }
+    return this.recordService.getBasicRecordsByRecordIds(dstId, recordIds);
   }
 }

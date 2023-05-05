@@ -16,23 +16,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { useMemo } from 'react';
 // FIXME:THEME
 import { colors } from '@apitable/components';
-import BronzeCardBg from 'static/icon/space/img_bronze.png';
-import SilverCardBg from 'static/icon/space/img_silver.png';
-import GoldenCardBg from 'static/icon/space/img_golden.png';
-import EnterpriseCardBg from 'static/icon/space/img_enterprise.png';
-import EnterpriseCardSkin from 'static/icon/space/img_enterprise_skin.png';
-import GoldenCardSkin from 'static/icon/space/img_golden_skin.png';
-import SilverCardSkin from 'static/icon/space/img_silver_skin.png';
-import BronzeCardSkin from 'static/icon/space/img_bronze_skin.png';
-import cx from 'classnames';
-// import { showSeatsUpgrading, showLevelCompare, showLevelRenewing } from 'pc/components/subscription';
-import { BronzeFilled, SilverFilled, GoldFilled, EnterpriseFilled } from '@apitable/icons';
-import { ISpaceLevelInfo, ISpaceLevelType, Position } from './interface';
-import styles from './style.module.less';
 import { Strings, t } from '@apitable/core';
+// import { showSeatsUpgrading, showLevelCompare, showLevelRenewing } from 'pc/components/subscription';
+import {
+  BronzeDarkFilled, BronzeLightFilled, EnterpriseDarkFilled, EnterpriseLightFilled, GoldDarkFilled, GoldLightFilled, SilverDarkFilled,
+  SilverLightFilled
+} from '@apitable/icons';
+import cx from 'classnames';
+import { ThemeIcon } from 'pc/components/common/theme_icon/theme_icon';
+import { useMemo } from 'react';
+import BronzeCardBg from 'static/icon/space/bronze_card_bg.png';
+import BronzeCardSkin from 'static/icon/space/bronze_card_medal.png';
+import EnterpriseCardBg from 'static/icon/space/enterprise_card_bg.png';
+import EnterpriseCardSkin from 'static/icon/space/enterprise_card_medal.png';
+import GoldenCardBg from 'static/icon/space/gold_card_bg.png';
+import GoldenCardSkin from 'static/icon/space/gold_card_medal.png';
+import SilverCardBg from 'static/icon/space/silver_card_bg.png';
+import SilverCardSkin from 'static/icon/space/silver_card_medal.png';
+import { ISpaceLevelInfo, ISpaceLevelInfoValue, ISpaceLevelType, Position } from './interface';
+import styles from './style.module.less';
 
 export const DELETE_SPACE_CONTEXT_MENU_ID = 'DELETE_SPACE_CONTEXT_MENU_ID';
 
@@ -49,85 +53,88 @@ export const getPercent = (percent: number) => {
   return percent;
 };
 
+const bronzeAndFree = {
+  strokeColor: `${colors.bronzeFg}80`,
+  trailColor: colors.fc5,
+  hightLightColor: colors.bronzeFg,
+  cardTitleColor: colors.orange[900],
+  cardTagStyle: { background: `${colors.bronzeFg}4d`, color: colors.fc8 },
+  secondTextColor: `${colors.bronzeFg}CC`,
+  skinStyle: {
+    right: 16,
+    top: 16,
+    width: '68px',
+    height: '82px',
+  },
+  cardTagPosition: Position.L,
+  cardBg: BronzeCardBg,
+  cardSkin: BronzeCardSkin,
+  upgradeBtnColor: undefined,
+  expirationColor: undefined,
+  logo: <ThemeIcon darkIcon={<BronzeDarkFilled size={20} />} lightIcon={<BronzeLightFilled size={20} />} />,
+  getLabel: (text: string) => {
+    return (
+      <span className={cx(styles.spaceLevelTag, styles.bronzeTag)}>
+        <span className={styles.text}>{text}</span>
+      </span>
+    );
+  }
+};
+
+const silverAndPlus = {
+  strokeColor: colors.silverFg,
+  trailColor: colors.silverBg,
+  cardTitleColor: colors.indigo[600],
+  hightLightColor: colors.silverFg,
+  cardTagStyle: { background: colors.indigo[200], color: colors.fc8 },
+  secondTextColor: colors.silverFg,
+  cardTagPosition: Position.L,
+  cardBg: SilverCardBg,
+  cardSkin: SilverCardSkin,
+  upgradeBtnColor: undefined,
+  expirationColor: undefined,
+  skinStyle: {
+    right: 16,
+    top: 16,
+    width: '68px',
+    height: '82px',
+  },
+  logo: <ThemeIcon darkIcon={<SilverDarkFilled size={20} />} lightIcon={<SilverLightFilled size={20} />} />,
+  getLabel: (text: string) => <span className={cx(styles.spaceLevelTag, styles.silverTag)}>
+    <span className={styles.text}>{text}</span>
+  </span>,
+};
+
+const goldenAndPro = {
+  strokeColor: colors.warningColor,
+  trailColor: colors.goldenBg,
+  cardTitleColor: colors.orange[800],
+  hightLightColor: colors.orange[500],
+  cardTagStyle: { background: colors.orange[400], color: colors.fc8 },
+  secondTextColor: `${colors.orange[800]}cc`,
+  expirationColor: colors.orange[600],
+  cardTagPosition: Position.L,
+  cardBg: GoldenCardBg,
+  cardSkin: GoldenCardSkin,
+  upgradeBtnColor: undefined,
+  skinStyle: {
+    right: 16,
+    top: 16,
+    width: '68px',
+    height: '82px',
+  },
+  logo: <ThemeIcon darkIcon={<GoldDarkFilled size={20} />} lightIcon={<GoldLightFilled size={20} />} />,
+  getLabel: (text: string) => <span className={cx(styles.spaceLevelTag, styles.goldTag)}>
+    <span className={styles.text}>{text}</span>
+  </span>,
+};
 const LevelConfigMap = {
-  bronze: {
-    strokeColor: `${colors.bronzeFg}80`,
-    trailColor: colors.fc5,
-    hightLightColor: colors.bronzeFg,
-    cardTitleColor: colors.orange[900],
-    cardTagStyle: { background: `${colors.bronzeFg}4d`, color: colors.fc8 },
-    secondTextColor: `${colors.bronzeFg}CC`,
-    skinStyle: {
-      right: 16,
-      top: 0,
-      width: '68px',
-      height: '82px',
-    },
-    cardTagPosition: Position.L,
-    cardBg: BronzeCardBg,
-    cardSkin: BronzeCardSkin,
-    upgradeBtnColor: undefined,
-    expirationColor: undefined,
-    logo: <BronzeFilled size={24} />,
-    getLabel: (text: string) => <span className={cx(styles.spaceLevelTag, styles.bronzeTag)}>
-      <span className={styles.icon}>
-        <BronzeFilled size={16} />
-      </span>
-      <span className={styles.text}>{text}</span>
-    </span>,
-  },
-  silver: {
-    strokeColor: colors.silverFg,
-    trailColor: colors.silverBg,
-    cardTitleColor: colors.indigo[600],
-    hightLightColor: colors.silverFg,
-    cardTagStyle: { background: colors.indigo[200], color: colors.fc8 },
-    secondTextColor: colors.silverFg,
-    cardTagPosition: Position.L,
-    cardBg: SilverCardBg,
-    cardSkin: SilverCardSkin,
-    upgradeBtnColor: undefined,
-    expirationColor: undefined,
-    skinStyle: {
-      right: 16,
-      top: 0,
-      width: '68px',
-      height: '82px',
-    },
-    logo: <SilverFilled size={24} />,
-    getLabel: (text: string) => <span className={cx(styles.spaceLevelTag, styles.silverTag)}>
-      <span className={styles.icon}>
-        <SilverFilled size={16} />
-      </span>
-      <span className={styles.text}>{text}</span>
-    </span>,
-  },
-  golden: {
-    strokeColor: colors.warningColor,
-    trailColor: colors.goldenBg,
-    cardTitleColor: colors.orange[800],
-    hightLightColor: colors.orange[500],
-    cardTagStyle: { background: colors.orange[400], color: colors.fc8 },
-    secondTextColor: `${colors.orange[800]}cc`,
-    expirationColor: colors.orange[600],
-    cardTagPosition: Position.L,
-    cardBg: GoldenCardBg,
-    cardSkin: GoldenCardSkin,
-    upgradeBtnColor: undefined,
-    skinStyle: {
-      right: 16,
-      top: 0,
-      width: '68px',
-      height: '82px',
-    },
-    logo: <GoldFilled size={24} />,
-    getLabel: (text: string) => <span className={cx(styles.spaceLevelTag, styles.goldTag)}>
-      <span className={styles.icon}>
-        <GoldFilled size={16} />
-      </span>
-      <span className={styles.text}>{text}</span>
-    </span>,
-  },
+  bronze: bronzeAndFree,
+  free: bronzeAndFree,
+  silver: silverAndPlus,
+  plus: silverAndPlus,
+  golden: goldenAndPro,
+  pro: goldenAndPro,
   enterprise: {
     strokeColor: colors.enterpriseFg,
     trailColor: colors.enterpriseBg,
@@ -143,15 +150,12 @@ const LevelConfigMap = {
     expirationColor: undefined,
     skinStyle: {
       right: 16,
-      top: 16,
-      height: 80,
-      width: 80,
+      top: 0,
+      width: '68px',
+      height: '82px',
     },
-    logo: <EnterpriseFilled size={24} />,
+    logo: <ThemeIcon darkIcon={<EnterpriseDarkFilled size={20} />} lightIcon={<EnterpriseLightFilled size={20} />} />,
     getLabel: (text: string) => <span className={cx(styles.spaceLevelTag, styles.enterpriseTag)}>
-      <span className={styles.icon}>
-        <EnterpriseFilled size={16} />
-      </span>
       <span className={styles.text}>{text}</span>
     </span>,
   },
@@ -160,7 +164,7 @@ const LevelConfigMap = {
 const getSpaceConfig = (
   spaceLevel: keyof typeof LevelConfigMap,
   texts: { title: string, titleTip: string, tagText: string, buttonText: string },
-) => {
+): ISpaceLevelInfoValue => {
   const config = LevelConfigMap[spaceLevel];
   const { title, titleTip, tagText, buttonText } = texts;
   return {
@@ -198,6 +202,24 @@ export const SpaceLevelInfo: ISpaceLevelInfo = {
     titleTip: t(Strings.grade_desc),
     buttonText: t(Strings.upgrade),
     tagText: t(Strings.free_edition),
+  }),
+  free: getSpaceConfig('free', {
+    title: t(Strings.subscribe_grade_free),
+    titleTip: t(Strings.grade_desc),
+    buttonText: t(Strings.upgrade),
+    tagText: t(Strings.free_edition),
+  }),
+  plus: getSpaceConfig('plus', {
+    title: t(Strings.subscribe_grade_plus),
+    titleTip: t(Strings.grade_desc),
+    buttonText: t(Strings.upgrade),
+    tagText: t(Strings.paid_edition),
+  }),
+  pro: getSpaceConfig('pro', {
+    title: t(Strings.subscribe_grade_pro),
+    titleTip: t(Strings.grade_desc),
+    buttonText: t(Strings.upgrade),
+    tagText: t(Strings.paid_edition),
   }),
   dingtalk_base: getSpaceConfig('bronze', {
     title: t(Strings.dingtalk_base),

@@ -16,17 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { TextButton, Button } from '@apitable/components';
-import { useResponsive } from 'pc/hooks';
-import { ReactNode } from 'react';
-import * as React from 'react';
-import { ScreenSize } from '../common/component_display';
+import { Button, TextButton } from '@apitable/components';
 import classNames from 'classnames';
-import styles from './style.module.less';
 import { WrapperTooltip } from 'pc/components/widget/widget_panel/widget_panel_header';
-import { expandViewLock } from 'pc/components/view_lock/expand_view_lock';
-import { useSelector } from 'react-redux';
-import { Selectors } from '@apitable/core';
+import { useResponsive } from 'pc/hooks';
+import * as React from 'react';
+import { ReactNode } from 'react';
+import { ScreenSize } from '../common/component_display';
+import styles from './style.module.less';
 
 type IToolItemProps = {
   icon: ReactNode;
@@ -41,17 +38,16 @@ type IToolItemProps = {
   showViewLockModal?: boolean;
 };
 
-// After adding a new tool item to the toolbar, 
+// After adding a new tool item to the toolbar,
 // you need to calculate the width of the minimum displayable icon + name. Update the threshold value here.
 // The number of text positions in the toolItem will also affect the width here.
 // const SHOW_TOOL_TEXT_WIDTH = 999;
 
-export const ToolItem: React.FC<IToolItemProps> = props => {
+export const ToolItem: React.FC<React.PropsWithChildren<IToolItemProps>> = props => {
   const { screenIsAtMost } = useResponsive();
   const isMobile = screenIsAtMost(ScreenSize.md);
-  const { isActive, className, showLabel = true, disabled, onClick, icon, text, id, showViewLockModal, isHide } = props;
+  const { isActive, className, showLabel = true, disabled, onClick, icon, text, id, isHide } = props;
   const shouldShowText = isHide || showLabel || isMobile; // Label is always displayed on mobile.
-  const activeView = useSelector(Selectors.getCurrentView)!;
 
   const buttonProps: any = {
     className: classNames(className, {
@@ -59,11 +55,7 @@ export const ToolItem: React.FC<IToolItemProps> = props => {
       [styles.onlyIcon]: !shouldShowText,
     }),
     disabled,
-    onClick: e => {
-      if (showViewLockModal) {
-        expandViewLock(activeView.id);
-        return;
-      }
+    onClick: (e: MouseEvent) => {
       onClick?.(e);
     },
     prefixIcon: icon,

@@ -16,7 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { FieldType, FilterDuration, FOperator, getLanguage, IDateTimeField, ITimestamp, Selectors } from '@apitable/core';
+import { WrapperTooltip } from '@apitable/components';
+import { FieldType, FilterDuration, FOperator, getLanguage, IDateTimeField, ITimestamp, Selectors, Strings, t } from '@apitable/core';
 import { useClickOutside } from '@huse/click-outside';
 import classNames from 'classnames';
 import dayjs, { Dayjs } from 'dayjs';
@@ -26,11 +27,11 @@ import { DateTimeEditor, DateTimeEditorBase } from 'pc/components/editors/date_t
 import { IEditor } from 'pc/components/editors/interface';
 import { NumberEditor } from 'pc/components/editors/number_editor';
 import { DateRangePickerMobile } from 'pc/components/tool_bar/view_filter/filter_value/filter_date/date_range_picker_mobile';
+import { useShowViewLockModal } from 'pc/components/view_lock/use_show_view_lock_modal';
 import { useResponsive } from 'pc/hooks';
 import { stopPropagation } from 'pc/utils';
 import * as React from 'react';
-import { useEffect, useRef, useState } from 'react';
-import ReactDOM from 'react-dom';
+import { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { IFilterDateProps } from '../../interface';
 import styles from '../style.module.less';
@@ -40,7 +41,7 @@ import { LocalFormat } from './local_format';
 
 const { RangePicker } = DatePicker;
 
-export const FilterDate: React.FC<IFilterDateProps> = props => {
+export const FilterDate: React.FC<React.PropsWithChildren<IFilterDateProps>> = props => {
   const { changeFilter, condition, field, conditionIndex, onChange } = props;
   const datasheetId = useSelector(state => Selectors.getActiveDatasheetId(state))!;
 
@@ -56,17 +57,14 @@ export const FilterDate: React.FC<IFilterDateProps> = props => {
       durationValue = FilterDuration.Today;
     }
   }
-  let noDateProperty;
+  let noDateProperty: IDateTimeField;
   const ref = useRef<HTMLDivElement>(null);
   const divRef = useRef<HTMLDivElement>(null);
   const numberRef = useRef<IEditor>(null);
 
-  const [showRangeCalendar, setShowRangeCalendar] = useState(false);
+  const isViewLock = useShowViewLockModal();
 
-  useEffect(() => {
-    if (condition.value[0] !== FilterDuration.DateRange) return;
-    setShowRangeCalendar(true);
-  }, [condition.value]);
+  const showRangeCalendar = durationValue === FilterDuration.DateRange;
 
   if (field.type === FieldType.DateTime) {
     noDateProperty = {
@@ -147,59 +145,71 @@ export const FilterDate: React.FC<IFilterDateProps> = props => {
     }
     if (condition.value[0] === FilterDuration.ExactDate) {
       return (
-        <DateTimeEditor
-          style={{ position: 'unset' }}
-          ref={dateEditorRef}
-          editable
-          editing
-          width={160}
-          datasheetId={datasheetId}
-          height={35}
-          field={noDateProperty as IDateTimeField}
-          commandFn={commandDateFn}
-          dataValue={dataValue}
-        />
+        <WrapperTooltip wrapper={isViewLock} tip={t(Strings.view_lock_setting_desc)}>
+          <div>
+            <DateTimeEditor
+              style={{ position: 'unset' }}
+              ref={dateEditorRef}
+              editable
+              editing
+              width={160}
+              datasheetId={datasheetId}
+              height={35}
+              field={noDateProperty as IDateTimeField}
+              commandFn={commandDateFn}
+              dataValue={dataValue}
+              disabled={isViewLock}
+            />
+          </div>
+        </WrapperTooltip>
+
       );
     }
     if (condition.value[0] === FilterDuration.DateRange) {
       const lang = getLanguage().split('-')[0];
+
       return (
         <>
           <ComponentDisplay minWidthCompatible={ScreenSize.md}>
-            <div ref={divRef}>
-              {
-                divRef.current && showRangeCalendar && ReactDOM.render(<RangePicker
-                  onChange={(value) => {rangePickerChange(value);}}
-                  format='YYYY-MM-DD'
-                  className={styles.dateRange}
-                  allowClear={false}
-                  suffixIcon={null}
-                  value={dataValue as any}
-                  locale={lang === 'en' ? undefined : LocalFormat.getDefinedChineseLocal()}
-                  getPopupContainer={() => divRef.current!}
-                />, divRef.current)
-              }
-            </div>
+            <WrapperTooltip wrapper={isViewLock} tip={t(Strings.view_lock_setting_desc)}>
+              <div ref={divRef}>
+                {
+                  showRangeCalendar && <RangePicker
+                    onChange={(value) => {rangePickerChange(value);}}
+                    format='YYYY-MM-DD'
+                    className={styles.dateRange}
+                    allowClear={false}
+                    suffixIcon={null}
+                    value={dataValue as any}
+                    locale={lang === 'en' ? undefined : LocalFormat.getDefinedChineseLocal()}
+                    getPopupContainer={() => divRef.current!}
+                    disabled={isViewLock}
+                  />
+                }
+              </div>
+            </WrapperTooltip>
           </ComponentDisplay>
           <ComponentDisplay maxWidthCompatible={ScreenSize.md}>
-            <DateRangePickerMobile {...props} rangePickerChange={rangePickerChange} dataValue={dataValue} />
+            <DateRangePickerMobile {...props} rangePickerChange={rangePickerChange} dataValue={dataValue} disabled={isViewLock} />
           </ComponentDisplay>
         </>
       );
     }
     if (condition.value[0] === FilterDuration.SomeDayBefore || condition.value[0] === FilterDuration.SomeDayAfter) {
       return (
-        <NumberEditor
-          style={{}}
-          ref={numberRef}
-          editable
-          editing
-          width={160}
-          datasheetId={datasheetId}
-          height={editorHeight}
-          field={field}
-          commandFn={commandNumberFn}
-        />
+        <WrapperTooltip wrapper={isViewLock} tip={t(Strings.view_lock_setting_desc)}>
+          <NumberEditor
+            style={{}}
+            ref={numberRef}
+            editable
+            editing
+            width={160}
+            datasheetId={datasheetId}
+            height={editorHeight}
+            field={field}
+            commandFn={commandNumberFn}
+          />
+        </WrapperTooltip>
       );
     }
     return null;

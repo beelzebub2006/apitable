@@ -34,18 +34,18 @@ import { ScreenSize } from 'pc/components/common/component_display';
 import { MobileSelect } from 'pc/components/common';
 import { getFieldTypeIcon } from 'pc/components/multi_grid/field_setting';
 import { renderComputeFieldError } from 'pc/components/multi_grid/header';
+import { useShowViewLockModal } from 'pc/components/view_lock/use_show_view_lock_modal';
 import { useResponsive } from 'pc/hooks';
 import { useMemo } from 'react';
 import * as React from 'react';
 import { ExecuteFilterFn } from '../interface';
 import classNames from 'classnames';
 import styles from './style.module.less';
-import ArrowIcon from 'static/icon/common/common_icon_pulldown_line.svg';
 import { IOption, Select, useThemeColors } from '@apitable/components';
 import { FieldPermissionLock } from 'pc/components/field_permission';
 import { useSelector } from 'react-redux';
 import { Tooltip } from 'pc/components/common';
-import WarnTriangleIcon from 'static/icon/common/common_icon_warning_triangle.svg';
+import { ChevronDownOutlined, WarnCircleFilled } from '@apitable/icons';
 
 interface IFilterFieldListProps {
   conditionIndex: number;
@@ -59,11 +59,11 @@ interface IFilterFieldListProps {
   warnTextObj?: { string?: string };
 }
 
-const FilterFieldListBase: React.FC<IFilterFieldListProps> = props => {
+const FilterFieldListBase: React.FC<React.PropsWithChildren<IFilterFieldListProps>> = props => {
   const { conditionIndex, changeFilter, condition, fieldMap, columns, warnTextObj, isCryptoField, fieldNotFound } = props;
   const colors = useThemeColors();
   const fieldPermissionMap = useSelector(Selectors.getFieldPermissionMap);
-
+  const isViewLock = useShowViewLockModal();
   const { screenIsAtMost } = useResponsive();
   const isMobile = screenIsAtMost(ScreenSize.md);
 
@@ -90,7 +90,7 @@ const FilterFieldListBase: React.FC<IFilterFieldListProps> = props => {
           conditionId: condition.conditionId,
           operator: Field.bindModel(field).acceptFilterOperators[0],
           value: getDefaultValue(valueType) as any,
-        };
+        } as any;
         return draft;
       });
     });
@@ -143,6 +143,7 @@ const FilterFieldListBase: React.FC<IFilterFieldListProps> = props => {
         onChange={onChange}
         defaultValue={condition.fieldId}
         title={t(Strings.please_choose)}
+        disabled={isViewLock}
         triggerComponent={
           <div
             className={classNames(styles.trigger, {
@@ -151,7 +152,7 @@ const FilterFieldListBase: React.FC<IFilterFieldListProps> = props => {
           >
             <span>{options.filter(option => option.value === condition.fieldId)[0]?.label}</span>
             {renderComputeFieldError(fieldMap[condition.fieldId], t(Strings.error_configuration_and_invalid_filter_option))}
-            <ArrowIcon className={styles.arrow} width={16} height={16} fill={colors.fourthLevelText} />
+            <ChevronDownOutlined className={styles.arrow} size={16} color={colors.fourthLevelText} />
           </div>
         }
       />
@@ -170,14 +171,17 @@ const FilterFieldListBase: React.FC<IFilterFieldListProps> = props => {
       dropdownMatchSelectWidth={false}
       openSearch
       searchPlaceholder={t(Strings.search)}
+      popupStyle={{
+        zIndex: 1000
+      }}
+      disabled={isViewLock}
+      disabledTip={t(Strings.view_lock_setting_desc)}
       suffixIcon={
         checkTypeSwitch(condition, fieldMap[condition.fieldId]) && !isCryptoField ? (
           <Tooltip title={t(Strings.lookup_filter_condition_tip)} placement="top">
-            <WarnTriangleIcon fill={colors.warningColor} width={20} height={16} />
+            <WarnCircleFilled color={colors.warningColor} size={20} />
           </Tooltip>
-        ) : (
-          undefined
-        )
+        ) : undefined
       }
     />
   );

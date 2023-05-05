@@ -18,19 +18,32 @@
 
 package com.apitable.internal.service.impl;
 
-import javax.annotation.Resource;
+import static com.apitable.core.constants.RedisConstants.GENERAL_LOCKED;
 
+import cn.hutool.core.util.StrUtil;
 import com.apitable.interfaces.billing.facade.EntitlementServiceFacade;
 import com.apitable.interfaces.billing.model.SubscriptionFeature;
 import com.apitable.interfaces.billing.model.SubscriptionInfo;
 import com.apitable.internal.assembler.BillingAssembler;
-import com.apitable.internal.vo.InternalSpaceApiUsageVo;
-import com.apitable.internal.vo.InternalSpaceSubscriptionVo;
+import com.apitable.internal.ro.SpaceStatisticsRo;
 import com.apitable.internal.service.InternalSpaceService;
+import com.apitable.internal.vo.InternalSpaceApiUsageVo;
+import com.apitable.internal.vo.InternalSpaceInfoVo;
+import com.apitable.internal.vo.InternalSpaceSubscriptionVo;
+import com.apitable.space.entity.LabsApplicantEntity;
+import com.apitable.space.enums.LabsFeatureEnum;
+import com.apitable.space.service.ILabsApplicantService;
 import com.apitable.space.service.IStaticsService;
-
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import javax.annotation.Resource;
+import org.springframework.integration.redis.util.RedisLockRegistry;
 import org.springframework.stereotype.Service;
 
+/**
+ * internal space service implement.
+ */
 @Service
 public class InternalSpaceServiceImpl implements InternalSpaceService {
 
@@ -39,6 +52,12 @@ public class InternalSpaceServiceImpl implements InternalSpaceService {
 
     @Resource
     private IStaticsService iStaticsService;
+
+    @Resource
+    private ILabsApplicantService iLabsApplicantService;
+
+    @Resource
+    private RedisLockRegistry redisLockRegistry;
 
     @Override
     public InternalSpaceSubscriptionVo getSpaceEntitlementVo(String spaceId) {
@@ -56,5 +75,41 @@ public class InternalSpaceServiceImpl implements InternalSpaceService {
         vo.setApiUsageUsedCount(iStaticsService.getCurrentMonthApiUsage(spaceId));
         vo.setIsAllowOverLimit(true);
         return vo;
+    }
+
+    @Override
+    public InternalSpaceInfoVo getSpaceInfo(String spaceId) {
+        InternalSpaceInfoVo spaceInfo = new InternalSpaceInfoVo();
+        InternalSpaceInfoVo.SpaceLabs labs = new InternalSpaceInfoVo.SpaceLabs();
+        // At present, there is only one, which directly queries a single one, and there are multiple requirements behind it. Expand it
+        LabsApplicantEntity applicant =
+            iLabsApplicantService.getApplicantByApplicantAndFeatureKey(spaceId,
+                LabsFeatureEnum.VIEW_MANUAL_SAVE.name());
+        labs.setViewManualSave(Objects.nonNull(applicant));
+        spaceInfo.setLabs(labs);
+        spaceInfo.setSpaceId(spaceId);
+        return spaceInfo;
+    }
+
+    @Override
+    public void updateSpaceStatisticsInCache(String spaceId, SpaceStatisticsRo data) {
+        if (null == data) {
+            return;
+        }
+        String lockKey = StrUtil.format(GENERAL_LOCKED, "space:statistics", spaceId);
+        // lock for space
+        Lock lock = redisLockRegistry.obtain(lockKey);
+        try {
+            if (lock.tryLock(1, TimeUnit.SECONDS)) {
+                iStaticsService.updateDatasheetViewCountStaticsBySpaceId(spaceId,
+                    data.getViewCount());
+                iStaticsService.updateDatasheetRecordCountStaticsBySpaceId(spaceId,
+                    data.getRecordCount());
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            lock.unlock();
+        }
     }
 }

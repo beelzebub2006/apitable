@@ -18,7 +18,7 @@
 
 import { SetStateAction } from 'react';
 import * as React from 'react';
-import { FieldType, IField } from '@apitable/core';
+import { FieldType, IDateTimeBaseField, IField } from '@apitable/core';
 import { FormatSelect } from './format_select/format_select';
 import { Dispatch } from 'react';
 import { FormateNumber } from './format_number';
@@ -31,6 +31,7 @@ import { FormateLookUp } from './format_lookup';
 import { FormatMember } from './format_member';
 import { FormatSingleText } from './format_single_text';
 import { FormatLastModifiedBy } from './format_last_modified_by';
+import { FormatCascader } from './format_cascader';
 import { FormatURL } from './format_url';
 
 interface IFieldFormatProps {
@@ -41,7 +42,7 @@ interface IFieldFormatProps {
   datasheetId?: string;
 }
 
-export const FieldFormat: React.FC<IFieldFormatProps> = props => {
+export const FieldFormat: React.FC<React.PropsWithChildren<IFieldFormatProps>> = props => {
   const { from, currentField, setCurrentField, hideOperateBox, datasheetId } = props;
 
   if (!currentField.property && (currentField.type === FieldType.SingleSelect || currentField.type === FieldType.MultiSelect)) {
@@ -79,7 +80,7 @@ export const FieldFormat: React.FC<IFieldFormatProps> = props => {
     case FieldType.DateTime:
     case FieldType.CreatedTime:
     case FieldType.LastModifiedTime:
-      return <FormatDateTime currentField={currentField} setCurrentField={setCurrentField} />;
+      return <FormatDateTime currentField={currentField} setCurrentField={setCurrentField as React.Dispatch<SetStateAction<IDateTimeBaseField>>} />;
     case FieldType.Link:
       return <FormateLink currentField={currentField} setCurrentField={setCurrentField} hideOperateBox={hideOperateBox} datasheetId={datasheetId} />;
     case FieldType.Formula:
@@ -94,6 +95,8 @@ export const FieldFormat: React.FC<IFieldFormatProps> = props => {
       return <FormatLastModifiedBy currentField={currentField} setCurrentField={setCurrentField} />;
     case FieldType.URL:
       return <FormatURL currentField={currentField} setCurrentField={setCurrentField} />;
+    case FieldType.Cascader:
+      return <FormatCascader currentField={currentField} setCurrentField={setCurrentField} />;
     default:
       return <></>;
   }

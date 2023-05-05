@@ -18,11 +18,11 @@
 
 import { IOption, Skeleton, Typography } from '@apitable/components';
 import { Api, ConfigConstant, INodeRoleMap, IUnitValue, StoreActions, Strings, t } from '@apitable/core';
-import { ChevronRightOutlined, InformationSmallOutlined } from '@apitable/icons';
+import { ChevronRightOutlined, QuestionCircleOutlined } from '@apitable/icons';
 import cls from 'classnames';
 // @ts-ignore
 import { SubscribeUsageTipType, triggerUsageAlert } from 'enterprise';
-import { Avatar, Message } from 'pc/components/common';
+import { Avatar, AvatarSize, Message } from 'pc/components/common';
 import { ScreenSize } from 'pc/components/common/component_display';
 import { Tooltip } from 'pc/components/common/tooltip';
 import { UnitPermissionSelect } from 'pc/components/field_permission/unit_permission_select';
@@ -31,10 +31,10 @@ import { permissionMenuData } from 'pc/utils';
 import { getEnvVariables } from 'pc/utils/env';
 import { FC, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { MembersDetail } from '../permission_settings/permission/members_detail';
+import { MembersDetail } from '../permission_settings_plus/permission/members_detail';
 import { PublicShareInviteLink } from './public_link';
 import styles from './style.module.less';
-
+import { IMemberList } from 'pc/components/catalog/permission_settings_plus/permission';
 export interface IShareContentProps {
   /** Information about the node being operated on */
   data: {
@@ -45,7 +45,7 @@ export interface IShareContentProps {
   };
 }
 
-export const ShareContent: FC<IShareContentProps> = ({ data }) => {
+export const ShareContent: FC<React.PropsWithChildren<IShareContentProps>> = ({ data }) => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
 
   const dispatch = useDispatch();
@@ -53,9 +53,24 @@ export const ShareContent: FC<IShareContentProps> = ({ data }) => {
   const isMobile = screenIsAtMost(ScreenSize.md);
   const socketData = useSelector(state => state.catalogTree.socketData);
   const spaceInfo = useSelector(state => state.space.curSpaceInfo);
-  const { getNodeRoleListReq } = useCatalogTreeRequest();
+  const { getNodeRoleListReq, getCollaboratorListPageReq } = useCatalogTreeRequest();
   const { run: getNodeRoleList, data: roleList, loading } = useRequest<INodeRoleMap>(() => getNodeRoleListReq(data.nodeId));
-  // const { run: checkEmail } = useRequest(checkEmailReq, { manual: true });
+  const [pageNo, setPageNo] = useState<number>(1);
+  const [memberList, setMemberList] = useState<IMemberList[]>([]);
+  const { run: getCollaboratorReq, data: collaboratorInfo } = useRequest((pageNo) => getCollaboratorListPageReq(pageNo, data.nodeId), {
+    manual: true
+  });
+
+  useEffect(() => {
+    getCollaboratorReq(pageNo);
+  }, [pageNo, getCollaboratorReq]);
+
+  useEffect(() => {
+    if(collaboratorInfo) {
+      setMemberList([...memberList, ...collaboratorInfo.records]);
+    }
+    // eslint-disable-next-line
+  }, [collaboratorInfo, setMemberList]);
 
   useEffect(() => {
     if (socketData && socketData.type === NodeChangeInfoType.UpdateRole) {
@@ -65,10 +80,10 @@ export const ShareContent: FC<IShareContentProps> = ({ data }) => {
 
   if (loading) {
     return (
-      <div className={cls(styles.shareContent, { [styles.shareContentMobile]: isMobile })}>
-        <Skeleton count={1} width='38%' height='24px' />
+      <div className={cls(styles.shareContent, styles.loading, { [styles.shareContentMobile]: isMobile })}>
+        <Skeleton count={1} style={{ marginTop: 0 }} width='25%' height='24px' />
         <Skeleton count={2} style={{ marginTop: '16px' }} height='24px' />
-        <Skeleton count={1} style={{ marginTop: '40px' }} width='38%' height='24px' />
+        <Skeleton count={1} style={{ marginTop: '58px' }} width='25%' height='24px' />
         <Skeleton count={1} style={{ marginTop: '16px' }} height='24px' />
       </div>
     );
@@ -135,7 +150,7 @@ export const ShareContent: FC<IShareContentProps> = ({ data }) => {
           <span>{t(Strings.collaborate_and_share)}</span>
           <Tooltip title={t(Strings.support)} trigger={'hover'}>
             <a href={getEnvVariables().WORKBENCH_NODE_SHARE_HELP_URL} rel='noopener noreferrer' target='_blank'>
-              <InformationSmallOutlined currentColor />
+              <QuestionCircleOutlined currentColor />
             </a>
           </Tooltip>
         </Typography>
@@ -156,7 +171,7 @@ export const ShareContent: FC<IShareContentProps> = ({ data }) => {
             {roleList && (
               <div className={styles.collaboratorIcon}>
                 {
-                  roleList.members.slice(0, 5).map((v, i) => (
+                  memberList.slice(0, 5).map((v, i) => (
                     <div key={v.memberId} className={styles.collaboratorIconItem} style={{ marginLeft: i === 0 ? 0 : -16, zIndex: 5 - i }}>
                       <Tooltip title={v.memberName}>
                         <div>
@@ -165,6 +180,7 @@ export const ShareContent: FC<IShareContentProps> = ({ data }) => {
                             title={v.nickName || v.memberName} 
                             avatarColor={v.avatarColor}
                             id={v.memberId} 
+                            size={AvatarSize.Size24}
                           />
                         </div>
                       </Tooltip>
@@ -174,7 +190,7 @@ export const ShareContent: FC<IShareContentProps> = ({ data }) => {
               </div>
             )}
             <Typography variant='body3' className={styles.collaboratorNumber}>
-              {t(Strings.collaborator_number, { number: roleList?.members.length })}
+              {t(Strings.collaborator_number, { number: collaboratorInfo?.total })}
             </Typography>
           </div>
           {
@@ -193,7 +209,11 @@ export const ShareContent: FC<IShareContentProps> = ({ data }) => {
           isMobile={isMobile}
         />
       </div>
-      {detailModalVisible && roleList && <MembersDetail data={roleList} onCancel={() => setDetailModalVisible(false)} />}
+      { detailModalVisible && <MembersDetail 
+        data={collaboratorInfo}
+        memberList={memberList}
+        setPageNo={setPageNo}
+        pageNo={pageNo} onCancel={() => setDetailModalVisible(false)} />}
     </>
   );
 };

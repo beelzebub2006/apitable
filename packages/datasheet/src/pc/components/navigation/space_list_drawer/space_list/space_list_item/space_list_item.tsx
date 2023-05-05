@@ -18,25 +18,23 @@
 
 import { useThemeColors } from '@apitable/components';
 import { IReduxState, ISpaceInfo, IUserInfo, Navigation, Strings, t } from '@apitable/core';
+import { LogoutOutlined, MoreStandOutlined, SettingOutlined } from '@apitable/icons';
 import { useUpdateEffect } from 'ahooks';
 import { Popover } from 'antd';
 import classnames from 'classnames';
+// @ts-ignore
+import { isSocialPlatformEnabled, SocialPlatformMap } from 'enterprise';
 import { truncate } from 'lodash';
 import Image from 'next/image';
 import { Avatar, AvatarSize, AvatarType, ButtonPlus, ContextmenuItem, Modal, Tooltip } from 'pc/components/common';
 import { ScreenSize } from 'pc/components/common/component_display';
 import { TComponent } from 'pc/components/common/t_component';
-// @ts-ignore
-import { SocialPlatformMap, isSocialPlatformEnabled } from 'enterprise';
 import { NavigationContext } from 'pc/components/navigation/navigation_context';
 import { Router } from 'pc/components/route_manager/router';
 import { useNotificationCreate, useResponsive } from 'pc/hooks';
 import * as React from 'react';
 import { FC, useContext, useState } from 'react';
 import { useSelector } from 'react-redux';
-import MoreIcon from 'static/icon/common/common_icon_more_stand.svg';
-import ExitIcon from 'static/icon/space/space_icon_quitspace.svg';
-import ManagerIcon from 'static/icon/workbench/workbench_tab_icon_manage_normal.svg';
 import styles from './style.module.less';
 
 export interface ISpaceListItemProps {
@@ -46,7 +44,7 @@ export interface ISpaceListItemProps {
   refreshList?: () => void;
 }
 
-export const SpaceListItem: FC<ISpaceListItemProps> = ({ spaceInfo, actived = false, managable = false, refreshList }) => {
+export const SpaceListItem: FC<React.PropsWithChildren<ISpaceListItemProps>> = ({ spaceInfo, actived = false, managable = false, refreshList }) => {
   const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
   const { closeSpaceListDrawer } = useContext(NavigationContext);
@@ -65,7 +63,7 @@ export const SpaceListItem: FC<ISpaceListItemProps> = ({ spaceInfo, actived = fa
     }
   }, [user.spaceId]);
 
-  const openMoreOperationHandler = e => {
+  const openMoreOperationHandler = (e: React.MouseEvent) => {
     e.stopPropagation();
   };
 
@@ -115,7 +113,7 @@ export const SpaceListItem: FC<ISpaceListItemProps> = ({ spaceInfo, actived = fa
           closeSpaceListDrawer();
           return;
         }
-        window.location.href = `${domain}/workbench?spaceId=${spaceId}`;
+        window.location.href = `${domain}/space/${spaceId}/workbench`;
       }}
     >
       <div className={styles.logo}>
@@ -134,7 +132,7 @@ export const SpaceListItem: FC<ISpaceListItemProps> = ({ spaceInfo, actived = fa
       </div>
       {managable ? (
         <ButtonPlus.Icon
-          icon={<ManagerIcon width={16} height={16} />}
+          icon={<SettingOutlined size={16} />}
           onClick={jumpSpaceManagement}
           className={classnames(styles.moreBtn, { [styles.visible]: isMobile })}
         />
@@ -150,12 +148,12 @@ export const SpaceListItem: FC<ISpaceListItemProps> = ({ spaceInfo, actived = fa
             onVisibleChange={visibleChangeHandler}
             content={
               <div className={styles.container} onClick={closeMenuHandler}>
-                <ContextmenuItem icon={<ExitIcon />} name={t(Strings.quit_space)} onClick={quitSpace} />
+                <ContextmenuItem icon={<LogoutOutlined />} name={t(Strings.quit_space)} onClick={quitSpace} />
               </div>
             }
           >
             <ButtonPlus.Icon
-              icon={<MoreIcon width={16} height={16} fill={colors.thirdLevelText} />}
+              icon={<MoreStandOutlined size={16} color={colors.thirdLevelText} />}
               onClick={openMoreOperationHandler}
               className={classnames(styles.moreBtn, visible && styles.visible)}
             />

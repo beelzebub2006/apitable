@@ -35,14 +35,14 @@ interface IFooterBtnInModalProps {
   hiddenCancelBtn?: boolean;
 }
 
-export const FooterBtnInModal: FC<IFooterBtnInModalProps> = (props) => {
+export const FooterBtnInModal: FC<React.PropsWithChildren<IFooterBtnInModalProps>> = (props) => {
   const {
     onOk, onCancel, okButtonProps, cancelButtonProps, okText = t(Strings.confirm),
     okType = 'primary', cancelText = t(Strings.cancel), className, hiddenCancelBtn
   } = props;
 
   return (
-    <div className={classNames(styles['modal-footer-btn-wrapper'], className)}>
+    <div className={classNames(styles.modalFooterBtnWrapper, className)}>
       {
         !hiddenCancelBtn &&
         <TextButton className="cancelBtn" size="small" onClick={onCancel} {...cancelButtonProps}>{cancelText}</TextButton>

@@ -48,7 +48,7 @@ export const Radio = React.forwardRef(({
     value
   };
   return (
-    <RadioLabelStyled className={cls({
+    <RadioLabelStyled ref={ref} className={cls({
       'radio-label-btn': isBtn,
       'radio-label-btn-checked': isBtn && isChecked,
       'radio-label-btn-disabled': isBtn && disabled,

@@ -16,14 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { ConfigConstant } from '@apitable/core';
-import { isEqual, xor } from 'lodash';
+import { ConfigConstant, Navigation, t, Strings } from '@apitable/core';
+import { AddOutlined, TriangleRightFilled } from '@apitable/icons';
+import { isEmpty, isEqual, xor } from 'lodash';
 import * as React from 'react';
 import { forwardRef, memo, ReactNode, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
-import DefaultSwitcherIcon from 'static/icon/datasheet/rightclick/rightclick_icon_retract.svg';
 import { TreeItem } from '../tree_item';
 import TreeViewContext from '../tree_view_context';
+import styles from './style.module.less';
+import { Button, Typography } from '@apitable/components';
+import { Router } from '../../../route_manager/router';
 
 export type ExpandAction = false | 'click';
 
@@ -58,7 +61,7 @@ export interface ITreeViewRef {
 export const TreeViewBase: React.ForwardRefRenderFunction<ITreeViewRef, ITreeViewProps> = ({
   module,
   className,
-  switcherIcon = <DefaultSwitcherIcon />,
+  switcherIcon = <TriangleRightFilled size={12} />,
   expandedKeys = [],
   selectedKeys = [],
   treeData,
@@ -151,7 +154,7 @@ export const TreeViewBase: React.ForwardRefRenderFunction<ITreeViewRef, ITreeVie
     });
   };
 
-  const renderTreeItem = (child, index: number, level = '0') => {
+  const renderTreeItem = (child: any, index: number, level = '0') => {
     const pos = `${level}-${index}`;
     const cloneProps = {
       pos,
@@ -160,13 +163,13 @@ export const TreeViewBase: React.ForwardRefRenderFunction<ITreeViewRef, ITreeVie
     return React.cloneElement(child, cloneProps);
   };
 
-  const singleSelectHandler = (e, nodeId: string) => {
+  const singleSelectHandler = (e: React.MouseEvent, nodeId: string) => {
     const newSelected = [nodeId];
     onSelect && onSelect(e, nodeId);
     selectedIdsRef.current = newSelected;
   };
 
-  const renderTree = (children, parentNode = null, level = '0') => {
+  const renderTree = (children: any[], parentNode = null, level = '0') => {
     return children.map((node, index) => {
       if (node.children && node.children.length) {
         return <TreeItem
@@ -204,15 +207,15 @@ export const TreeViewBase: React.ForwardRefRenderFunction<ITreeViewRef, ITreeVie
     onKeyDown && onKeyDown(e);
   };
 
-  const dragStart = treeNode => {
+  const dragStart = (treeNode: { id: React.SetStateAction<string>; }) => {
     setDragNodesId(treeNode.id);
   };
 
-  const dragOver = treeNode => {
+  const dragOver = (treeNode: { id: any; }) => {
     onDragOver && onDragOver({ dragNodeId, targetNodeId: treeNode.id, ...treeNode });
   };
 
-  const drop = treeNode => {
+  const drop = (treeNode: any) => {
     onDrop && onDrop(treeNode);
     resetState();
   };
@@ -224,7 +227,6 @@ export const TreeViewBase: React.ForwardRefRenderFunction<ITreeViewRef, ITreeVie
   };
 
   return (
-
     <TreeViewContext.Provider
       value={{
         module,
@@ -258,7 +260,23 @@ export const TreeViewBase: React.ForwardRefRenderFunction<ITreeViewRef, ITreeVie
         onKeyDown={keyDownHandler}
         tabIndex={0}
       >
-        {treeData ? renderTree(treeData) : React.Children.map(children, renderTreeItem)}
+        {treeData ? renderTree(treeData) : isEmpty(children) ? (
+          <div className={styles.empty}>
+            <Typography variant="body2">
+              {t(Strings.catalog_empty_tips)}
+            </Typography>
+            <Button
+              color="primary"
+              prefixIcon={<AddOutlined/>}
+              block
+              onClick={() => {
+                Router.push(Navigation.TEMPLATE);
+              }}
+            >
+              {t(Strings.catalog_add_from_template_btn_title)}
+            </Button>
+          </div>
+        ) : React.Children.map(children, renderTreeItem)}
       </ul>
     </TreeViewContext.Provider>
 

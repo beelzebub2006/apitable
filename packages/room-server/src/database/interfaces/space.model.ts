@@ -38,3 +38,15 @@ export class InternalCreateDatasheetVo {
   datasheetId!: string;
   createdAt!: number;
 }
+
+export class InternalSpaceInfoVo {
+  spaceId!: string;
+  labs!: {
+    viewManualSave: boolean
+  };
+}
+
+export class InternalSpaceStatisticsRo {
+  viewCount?: {[key: number]: number};
+  recordCount?: number;
+}

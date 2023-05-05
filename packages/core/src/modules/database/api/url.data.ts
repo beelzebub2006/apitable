@@ -20,6 +20,7 @@
 export const FETCH_DASHBOARD = '/dashboard/:dashboardId/dataPack';
 export const FETCH_SHARE_DASHBOARD = '/share/:shareId/dashboard/:dashboardId/dataPck';
 export const FETCH_TEMPLATE_DASHBOARD = '/template/:templateId/dashboard/:dashboardId/dataPck';
+export const FETCH_EMBED_DASHBOARD = '/embedlinks/:embedId/dashboards/:dashboardId/dataPack';
 // =============== Dashboard related =======================
 
 // =============== Column permissions related start =======================
@@ -116,3 +117,12 @@ export const UNSUBSCRIBE_DATASHEET_RECORDS = '/datasheets/:dstId/records/subscri
 // =============== datasheet related =======================
 
 export const GET_CONTENT_DISPOSITION = '/attach/getContentDisposition';
+
+// Cascader data
+export const CASCADER_DATA = '/spaces/:spaceId/datasheets/:datasheetId/cascader';
+
+// Get cascader snapshot data
+export const CASCADER_SNAPSHOT = '/datasheets/:datasheetId/fields/:fieldId/cascader-snapshot';
+
+// Update cascader snapshot data
+export const UPDATE_CASCADER_SNAPSHOT = '/spaces/:spaceId/datasheets/:datasheetId/fields/:fieldId/cascader-snapshot';

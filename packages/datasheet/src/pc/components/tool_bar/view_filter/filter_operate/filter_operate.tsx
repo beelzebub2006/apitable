@@ -32,6 +32,7 @@ import {
 import produce from 'immer';
 import { ScreenSize } from 'pc/components/common/component_display';
 import { MobileSelect } from 'pc/components/common';
+import { useShowViewLockModal } from 'pc/components/view_lock/use_show_view_lock_modal';
 import { useResponsive } from 'pc/hooks';
 import * as React from 'react';
 import { ExecuteFilterFn } from '../interface';
@@ -51,12 +52,12 @@ const checkNullOperator = (operator: FOperator) => {
   return operator === FOperator.IsNotEmpty || operator === FOperator.IsEmpty || operator === FOperator.IsRepeat;
 };
 
-export const FilterOperate: React.FC<IFilterOperateProps> = props => {
+export const FilterOperate: React.FC<React.PropsWithChildren<IFilterOperateProps>> = props => {
   const { conditionIndex, conditions, changeFilter, condition, field, fieldMap } = props;
   const colors = useThemeColors();
   const { screenIsAtMost } = useResponsive();
   const isMobile = screenIsAtMost(ScreenSize.md);
-
+  const isViewLock = useShowViewLockModal();
   function generateValue(operator: FOperator) {
     const field = fieldMap[condition.fieldId];
     const { valueType } = Field.bindModel(field);
@@ -109,7 +110,7 @@ export const FilterOperate: React.FC<IFilterOperateProps> = props => {
           fieldType: field.type,
           operator: value,
           value: generateValue(value),
-        };
+        } as any;
         return draft;
       });
     });
@@ -122,6 +123,7 @@ export const FilterOperate: React.FC<IFilterOperateProps> = props => {
         optionData={Field.bindModel(field).acceptFilterOperators.map(fop => mapHandle(field, fop))}
         onChange={onChange}
         title={t(Strings.please_choose)}
+        disabled={isViewLock}
         style={{
           justifyContent: 'space-between',
           background: colors.lowestBg,
@@ -139,6 +141,8 @@ export const FilterOperate: React.FC<IFilterOperateProps> = props => {
       triggerCls={styles.con}
       openSearch={false}
       dropdownMatchSelectWidth={false}
+      disabled={isViewLock}
+      disabledTip={t(Strings.view_lock_setting_desc)}
     />
   );
 };

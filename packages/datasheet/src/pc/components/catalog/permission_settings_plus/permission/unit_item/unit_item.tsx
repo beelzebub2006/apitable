@@ -62,7 +62,7 @@ const triggerBase = {
   }
 };
 
-export const UnitItem: FC<IUnitItemProps> = props => {
+export const UnitItem: FC<React.PropsWithChildren<IUnitItemProps>> = props => {
   const colors = useThemeColors();
   const { unit, role, identity, className, roleOptions = DEFAULT_ROLE, isAppointMode, 
     disabled, onChange, onRemove, isDetail, teamData, memberId } = props;
@@ -88,18 +88,18 @@ export const UnitItem: FC<IUnitItemProps> = props => {
       return <></>;
     }
     // Defaults to isAdmin && !isOwner
-    let backgroundColor = colors.deepPurple[100];
-    let color = colors.deepPurple[500];
+    let backgroundColor: string = colors.rainbowPurple1;
+    let color: string = colors.rainbowPurple5;
     let str = t(Strings.space_admin);
 
     if (!isAdmin && isOwner) {
-      backgroundColor = colors.teal[100];
-      color = colors.teal[500];
+      backgroundColor = colors.rainbowTeal1;
+      color = colors.rainbowTeal4;
       str = t(Strings.share_permisson_model_node_owner);
     }
     if (isAdmin && isOwner) {
-      backgroundColor = colors.indigo[100];
-      color = colors.indigo[500];
+      backgroundColor = colors.rainbowIndigo1;
+      color = colors.rainbowIndigo5;
       str = t(Strings.node_permission_label_space_and_file);
     }
     return (
@@ -125,7 +125,6 @@ export const UnitItem: FC<IUnitItemProps> = props => {
     }
     return `${t(Strings.node_permission_item_tips_other_he, { role: label })}${disabled ? '' : t(Strings.node_permission_item_tips_other_he_edit)}`;
   };
-
   const itemContentMain = (
     <div className={classnames(styles.unitItem, className, !disabled && styles.unitItemOperation, (isDetail || isMobile) && styles.unitItemMobile)}>
       <div className={styles.unitInfo}>
@@ -138,7 +137,7 @@ export const UnitItem: FC<IUnitItemProps> = props => {
           }
           triggerBase={unit.isTeam ? undefined : triggerBase}
           memberId={unit.memberId || memberId}
-          description={get(teamData, '0.fullHierarchyTeamName', '')}
+          description={get(teamData, '0.fullHierarchyTeamName', '') || unit.info}
           extra={!isAppointMode ? t(Strings.node_permission_extend_desc) : ''}
           style={{ backgroundColor: 'transparent', height: 'auto' }}
           avatarProps={{
@@ -196,19 +195,21 @@ export const UnitItem: FC<IUnitItemProps> = props => {
           onVisibleChange={setMenuVisible}
           disabled={disabled}
           overlay={
-            <Menu>
-              {roleOptions.map(v => (
-                <MenuItem key={v.value} onClick={() => clickRole(unit.id, v.value)} active={role === v.value} item={v} />
-              ))}
-              <MenuItem
-                className={styles.delete}
-                item={{ label: t(Strings.remove_role), value: 'remove' }}
-                option={{ labelColor: colors.textDangerDefault }}
-                onClick={() => removeRole(unit.id)}
-              >
-                {t(Strings.remove_role)}
-              </MenuItem>
-            </Menu>
+            <div style={{ maxWidth: '240px' }}>
+              <Menu>
+                {roleOptions.map(v => (
+                  <MenuItem key={v.value} onClick={() => clickRole(unit.id, v.value)} active={role === v.value} item={v} />
+                ))}
+                <MenuItem
+                  className={styles.delete}
+                  item={{ label: t(Strings.remove_role), value: 'remove' }}
+                  option={{ labelColor: colors.textDangerDefault }}
+                  onClick={() => removeRole(unit.id)}
+                >
+                  {t(Strings.remove_role)}
+                </MenuItem>
+              </Menu>
+            </div>
           }
         >
           {itemContent}

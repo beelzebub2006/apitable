@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { Button, Typography, useThemeColors, useListenVisualHeight } from '@apitable/components';
+import { Button, Typography, useThemeColors, useListenVisualHeight, IUseListenTriggerInfo, WrapperTooltip } from '@apitable/components';
 import {
   FieldType,
   IKanbanViewProperty,
@@ -32,7 +32,7 @@ import {
   UN_GROUP,
 } from '@apitable/core';
 import { DragOutlined } from '@apitable/icons';
-import { Switch } from 'antd';
+import { Switch, Tooltip } from 'antd';
 import classNames from 'classnames';
 import produce from 'immer';
 import { ComponentDisplay, ScreenSize } from 'pc/components/common/component_display';
@@ -40,6 +40,7 @@ import { useCommand } from 'pc/components/kanban_view/hooks/use_command';
 import { LineSearchInput } from 'pc/components/list/common_list/line_search_input';
 import { CellMember } from 'pc/components/multi_grid/cell/cell_member';
 import { CellOptions, inquiryValueByKey } from 'pc/components/multi_grid/cell/cell_options';
+import { useShowViewLockModal } from 'pc/components/view_lock/use_show_view_lock_modal';
 import { usePlatform } from 'pc/hooks/use_platform';
 import * as React from 'react';
 import { useMemo, useRef, useState } from 'react';
@@ -52,10 +53,10 @@ import styles from './styles.module.less';
 const MIN_HEIGHT = 120;
 const MAX_HEIGHT = 340;
 
-export const HiddenKanbanGroup = props => {
+export const HiddenKanbanGroup = (props: { triggerInfo?: IUseListenTriggerInfo; }) => {
   const { triggerInfo } = props;
   const { mobile } = usePlatform();
-
+  const isViewLock = useShowViewLockModal();
   const view = useSelector(Selectors.getCurrentView) as IKanbanViewProperty;
   const kanbanFieldId = useSelector(Selectors.getKanbanFieldId)!;
   const field = useSelector(state => Selectors.getField(state, kanbanFieldId));
@@ -143,7 +144,7 @@ export const HiddenKanbanGroup = props => {
 
   const CellWrapper = isMemberField ? CellMember : CellOptions;
 
-  const groupItem = (provided, isDragDisabled, visible, id) => (
+  const groupItem = (provided: any, isDragDisabled: boolean, visible: boolean | undefined, id: any) => (
     <div
       key={id}
       className={classNames({
@@ -153,9 +154,15 @@ export const HiddenKanbanGroup = props => {
       ref={provided.innerRef}
       {...provided.draggableProps}
       {...provided.dragHandleProps}
-      onClick={() => toggleHidden(id)}
+      onClick={() => !isViewLock && toggleHidden(id)}
     >
-      <div className={styles.dragHandle}>{!isDragDisabled && <DragOutlined size={10} color={mobile ? colors.fc3 : colors.fc4} />}</div>
+      <WrapperTooltip wrapper={isViewLock} tip={t(Strings.view_lock_setting_desc)}>
+        <div className={styles.dragHandle}>{
+          !isDragDisabled &&
+          <DragOutlined size={10} color={mobile ? colors.fc3 : colors.fc4} />
+        }</div>
+      </WrapperTooltip>
+
       {id !== UN_GROUP ? (
         <CellWrapper cellValue={isMemberField ? [id] : id} field={field as IMemberField} />
       ) : (
@@ -165,7 +172,11 @@ export const HiddenKanbanGroup = props => {
           </div>
         </div>
       )}
-      <Switch onChange={() => toggleHidden(id)} checked={visible} size={mobile ? 'default' : 'small'} />
+      {
+        isViewLock ? <Tooltip title={t(Strings.view_lock_setting_desc)}>
+          <Switch checked={visible} size={mobile ? 'default' : 'small'} disabled={isViewLock} />
+        </Tooltip> : <Switch onChange={() => toggleHidden(id)} checked={visible} size={mobile ? 'default' : 'small'} disabled={isViewLock} />
+      }
     </div>
   );
 
@@ -174,7 +185,7 @@ export const HiddenKanbanGroup = props => {
       <div className={styles.header}>
         <ComponentDisplay minWidthCompatible={ScreenSize.md}>
           <div className={styles.title}>
-            <Typography variant="h7">{t(Strings.set_grouping)}</Typography>
+            <Typography variant='h7'>{t(Strings.set_grouping)}</Typography>
           </div>
           <SyncViewTip style={{ padding: '2px 0px 0px' }} content={t(Strings.view_sync_property_tip_short)} />
         </ComponentDisplay>
@@ -189,7 +200,7 @@ export const HiddenKanbanGroup = props => {
         <ComponentDisplay maxWidthCompatible={ScreenSize.md}>
           <div className={styles.searchWrapper}>
             <LineSearchInput
-              size="small"
+              size='small'
               placeholder={t(Strings.search)}
               value={query}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
@@ -201,14 +212,14 @@ export const HiddenKanbanGroup = props => {
         {t(Strings.kaban_not_group).includes(query) && groupItem({}, true, !hiddenGroupMap?.[UN_GROUP], UN_GROUP)}
         {groupInfoForRender.length > 0 ? (
           <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <Droppable droppableId="kanbanGroupList" direction="vertical">
+            <Droppable droppableId='kanbanGroupList' direction='vertical'>
               {provided => (
                 <div ref={provided.innerRef} {...provided.droppableProps}>
                   {groupInfoForRender.map(({ id }, index) => {
                     const isDragDisabled = Boolean(query.length > 0 || id === UN_GROUP);
                     const visible = !hiddenGroupMap?.[id];
                     return (
-                      <Draggable key={id} draggableId={id} index={index} isDragDisabled={isDragDisabled}>
+                      <Draggable key={id} draggableId={id} index={index} isDragDisabled={isDragDisabled || isViewLock}>
                         {provided => groupItem(provided, isDragDisabled, visible, id)}
                       </Draggable>
                     );
@@ -226,12 +237,16 @@ export const HiddenKanbanGroup = props => {
       </div>
 
       <div className={styles.opAll}>
-        <Button size="small" onClick={() => toggleHidden(null, true)} block>
-          {t(Strings.hide_all_fields)}
-        </Button>
-        <Button size="small" onClick={() => toggleHidden(null, false)} block>
-          {t(Strings.show_all_fields)}
-        </Button>
+        <WrapperTooltip wrapper={isViewLock} tip={t(Strings.view_lock_setting_desc)}>
+          <Button size='small' onClick={() => toggleHidden(null, true)} block disabled={isViewLock}>
+            {t(Strings.hide_all_fields)}
+          </Button>
+        </WrapperTooltip>
+        <WrapperTooltip wrapper={isViewLock} tip={t(Strings.view_lock_setting_desc)}>
+          <Button size='small' onClick={() => toggleHidden(null, false)} block disabled={isViewLock}>
+            {t(Strings.show_all_fields)}
+          </Button>
+        </WrapperTooltip>
       </div>
     </div>
   );

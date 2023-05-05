@@ -150,7 +150,8 @@ public class NodeRubbishServiceImpl implements INodeRubbishService {
     public void recoverRubbishNode(Long userId, String nodeId, String parentId) {
         log.info("The user [{}] restores the node [{}] of the rubbish to the parent node [{}]", userId, nodeId, parentId);
         // Obtain the node ID of the node and its child descendants.
-        List<String> subNodeIds = nodeMapper.selectBatchAllSubNodeIds(Collections.singletonList(nodeId), true);
+        List<String> subNodeIds =
+            iNodeService.getNodeIdsInNodeTree(nodeId, -1, true);
         if (CollUtil.isNotEmpty(subNodeIds)) {
             // recovery datasheet
             iDatasheetService.updateIsDeletedStatus(userId, subNodeIds, false);
@@ -177,7 +178,8 @@ public class NodeRubbishServiceImpl implements INodeRubbishService {
     public void delRubbishNode(Long userId, String nodeId) {
         log.info("User [{}] completely delete the node of the rubbish [{}]", userId, nodeId);
         // Obtain the node ID of the node and its child descendants.
-        List<String> subNodeIds = nodeMapper.selectBatchAllSubNodeIds(Collections.singletonList(nodeId), true);
+        List<String> subNodeIds =
+            iNodeService.getNodeIdsInNodeTree(nodeId, -1, true);
         // logical delete node
         boolean flag = SqlHelper.retBool(nodeMapper.updateIsDeletedByNodeId(userId, nodeId));
         ExceptionUtil.isTrue(flag, DatabaseException.DELETE_ERROR);
@@ -188,7 +190,8 @@ public class NodeRubbishServiceImpl implements INodeRubbishService {
             // delete all roles of the node
             iNodeRoleService.deleteByNodeId(userId, subNodeIds);
             // Clear the field permissions of the deleted grid datasheet
-            List<NodeBaseInfoDTO> baseNodeInfos = nodeMapper.selectBaseNodeInfoByNodeIdsIncludeDelete(subNodeIds);
+            List<NodeBaseInfoDTO> baseNodeInfos =
+                nodeMapper.selectNodeBaseInfosByNodeIds(subNodeIds, true);
             baseNodeInfos.stream().filter(info -> NodeType.toEnum(info.getType()).equals(NodeType.DATASHEET))
                     .forEach(info -> {
                         List<String> controlIds = iControlService.getControlIdByControlIdPrefixAndType(info.getNodeId(),
@@ -212,7 +215,12 @@ public class NodeRubbishServiceImpl implements INodeRubbishService {
         long retainDay = Boolean.TRUE.equals(limitProperties.getIsAllowOverLimit()) ?
                 limitProperties.getRubbishMaxRetainDay() : entitlementServiceFacade.getSpaceSubscription(spaceId).getFeature().getRemainTrashDays().getValue();
         // Subscription function restriction check
-        ExceptionUtil.isTrue(rubbishUpdatedAt.isAfter(LocalDateTime.of(ClockManager.me().getLocalDateNow().minusDays(retainDay), LocalTime.MAX)), RUBBISH_NODE_NOT_EXIST);
+        ExceptionUtil.isTrue(retainDay < 0
+            || rubbishUpdatedAt.isAfter(LocalDateTime.of(ClockManager.me()
+                .getLocalDateNow()
+                .minusDays(retainDay),
+            LocalTime.MAX)
+        ), RUBBISH_NODE_NOT_EXIST);
 
         // Check node permissions
         ControlRoleDict roleDict = controlTemplate.fetchRubbishNodeRole(memberId, Collections.singletonList(nodeId));

@@ -16,14 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import { black, ContextMenu as ContextMenuList, deepPurple, IContextMenuClickState, Switch } from '@apitable/components';
 import {
   Api, CollaCommandName, ConfigConstant, DATASHEET_ID, DatasheetActions, ExecuteResult, getMaxViewCountPerSheet, getUniqName, IPermissions,
   IViewProperty, Selectors, StoreActions, Strings, t, ViewType,
 } from '@apitable/core';
-import { black, ContextMenu as ContextMenuList, deepPurple, IContextMenuClickState, Switch } from '@apitable/components';
-import { AutosaveOutlined, CalenderRightOutlined, LockNonzeroOutlined } from '@apitable/icons';
+import { AutosaveOutlined, ChevronRightOutlined, LoadingOutlined, LockOutlined } from '@apitable/icons';
 import { Modal as ModalComponent, Spin } from 'antd';
-import dynamic from 'next/dynamic';
+// @ts-ignore
+import { triggerUsageAlert } from 'enterprise';
 import { makeNodeIconComponent, NodeIcon } from 'pc/components/catalog/node_context_menu';
 import { Modal } from 'pc/components/common';
 import { confirmViewAutoSave } from 'pc/components/tab_bar/view_sync_switch/popup_content';
@@ -38,10 +39,6 @@ import { isMobileApp } from 'pc/utils/env';
 import * as React from 'react';
 import { useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-// @ts-ignore
-import { triggerUsageAlert } from 'enterprise';
-
-const LoadingOutlined = dynamic(() => import('@ant-design/icons/LoadingOutlined'), { ssr: false });
 
 interface IContextMenuProps {
   activeViewId: string | undefined;
@@ -53,7 +50,7 @@ interface IContextMenuProps {
   setEditIndex: React.Dispatch<React.SetStateAction<number | null>>;
 }
 
-export const ContextMenu: React.FC<IContextMenuProps> = props => {
+export const ContextMenu: React.FC<React.PropsWithChildren<IContextMenuProps>> = props => {
   const {
     activeViewId,
     viewList,
@@ -92,7 +89,6 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
   const spaceManualSaveViewIsOpen = useSelector(state => {
     return state.labs.includes('view_manual_save');
   });
-  const spaceInfo = useSelector(state => { return state.space.curSpaceInfo; });
 
   const isViewCountOverLimit = Boolean(viewList.length >= getMaxViewCountPerSheet());
 
@@ -108,13 +104,13 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
     deleteView(currentViewId);
   };
 
-  const handleRenameItem = (args) => {
+  const handleRenameItem = (args: any) => {
     const { props: { tabIndex }} = args;
     setEditIndex(tabIndex);
     return;
   };
 
-  const handleForDeleteView = async(args) => {
+  const handleForDeleteView = async(args: any) => {
     const { props: { tabIndex }} = args;
     let content = t(Strings.del_view_content, {
       view_name: viewList[tabIndex].name,
@@ -146,7 +142,7 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
     });
   };
 
-  const exportTypeCsv = (args) => {
+  const exportTypeCsv = (args: any) => {
     const { props: { tabIndex }} = args;
     exportDatasheet(
       activeNodeId!, ConfigConstant.EXPORT_TYPE_CSV,
@@ -154,7 +150,7 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
     );
   };
 
-  const exportTypeXlsx = (args) => {
+  const exportTypeXlsx = (args: any) => {
     const { props: { tabIndex }} = args;
     exportDatasheet(
       activeNodeId!, ConfigConstant.EXPORT_TYPE_XLSX,
@@ -162,13 +158,13 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
     );
   };
 
-  const exportTypeImage = (args) => {
+  const exportTypeImage = (args: any) => {
     const { props: { tabIndex }} = args;
     const viewId = Selectors.getViewsList(store.getState())[tabIndex].id;
     if (currentViewId !== viewId) return;
     ModalComponent.success({
       icon: null,
-      title: <Spin style={{ width: '100%' }} indicator={<LoadingOutlined size={16} color={deepPurple[500]} />} />,
+      title: <Spin style={{ width: '100%' }} indicator={<LoadingOutlined className="circle-loading" size={16} color={deepPurple[500]} />} />,
       content: t(Strings.export),
       width: 180,
       style: {
@@ -186,7 +182,7 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
     }, 200);
   };
 
-  const duplicateView = (args) => {
+  const duplicateView = (args: any) => {
     const { props: { tabIndex }} = args;
     const view = viewList[tabIndex] as IViewProperty;
     const snapshot = Selectors.getSnapshot(store.getState());
@@ -213,7 +209,6 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
   };
 
   const addForm = () => {
-    triggerUsageAlert('maxFormViewsInSpace', { usage: spaceInfo!.formViewNums + 1 });
     const activeViewName = viewList.find(item => item.id === activeViewId)?.name;
     const nodeName = activeViewName ?
       `${activeViewName}${t(Strings.key_of_adjective)}${t(Strings.view_form)}` :
@@ -235,7 +230,7 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
     }, nodeName);
   };
 
-  const openViewLock = (args) => {
+  const openViewLock = (args: any) => {
     const { props: { tabIndex }} = args;
     expandViewLock(viewList[tabIndex].id);
   };
@@ -247,7 +242,6 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
         text: t(Strings.rename_view),
         onClick: handleRenameItem,
         hidden: !permissions.viewRenamable,
-        'data-sensors-click': true,
         id: DATASHEET_ID.VIEW_OPERATION_ITEM_RENAME,
       },
       {
@@ -257,7 +251,6 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
         hidden: !permissions.viewCreatable,
         disabled: isViewCountOverLimit,
         disabledTip: t(Strings.view_count_over_limit, { count: getMaxViewCountPerSheet() }),
-        'data-sensors-click': true,
         id: DATASHEET_ID.VIEW_OPERATION_ITEM_COPY,
       },
       {
@@ -265,7 +258,6 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
         text: t(Strings.create_view_form),
         onClick: addForm,
         hidden: !viewAllowCreateForm || !formCreatable,
-        'data-sensors-click': true,
         id: DATASHEET_ID.VIEW_OPERATION_ITEM_COPY_FORM,
       },
       {
@@ -273,17 +265,16 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
         text: t(Strings.create_mirror),
         onClick: addMirror,
         hidden: !mirrorCreatable,
-        'data-sensors-click': true,
         id: DATASHEET_ID.VIEW_OPERATION_ITEM_COPY_MIRROR,
       },
     ],
     [
       {
-        icon: <LockNonzeroOutlined />,
+        icon: <LockOutlined />,
         shortcutKey: <Switch size={'small'} />,
         text: t(Strings.view_lock),
         onClick: openViewLock,
-        hidden: (arg) => {
+        hidden: (arg: any) => {
           if (!permissions.manageable) {
             return true;
           }
@@ -291,15 +282,14 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
           const view = viewList[tabIndex];
           return Boolean(view.lockInfo);
         },
-        'data-sensors-click': true,
         id: DATASHEET_ID.VIEW_OPERATION_ITEM_LOCK,
       },
       {
-        icon: <LockNonzeroOutlined />,
+        icon: <LockOutlined />,
         shortcutKey: <Switch size={'small'} checked />,
         text: t(Strings.view_lock),
         onClick: openViewLock,
-        hidden: (arg) => {
+        hidden: (arg: any) => {
           if (!permissions.manageable) {
             return true;
           }
@@ -307,7 +297,6 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
           const view = viewList[tabIndex];
           return !view.lockInfo;
         },
-        'data-sensors-click': true,
         id: DATASHEET_ID.VIEW_OPERATION_ITEM_LOCK_CHECK,
       },
       {
@@ -316,7 +305,6 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
         shortcutKey: <Switch size={'small'} />,
         onClick: () => { confirmViewAutoSave(false, activeNodeId!, activeViewId!, shareId); },
         hidden: Boolean(view?.autoSave) || !spaceManualSaveViewIsOpen || !viewSyncManageable,
-        'data-sensors-click': true,
         id: DATASHEET_ID.VIEW_OPERATION_ITEM_CHANGE_AUTO_SAVE,
       },
       {
@@ -325,7 +313,6 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
         shortcutKey: <Switch size={'small'} checked />,
         onClick: () => { confirmViewAutoSave(true, activeNodeId!, activeViewId!, shareId); },
         hidden: !view?.autoSave || !spaceManualSaveViewIsOpen || !viewSyncManageable,
-        'data-sensors-click': true,
         id: DATASHEET_ID.VIEW_OPERATION_ITEM_CHANGE_AUTO_SAVE_CHECK,
       }
     ],
@@ -335,24 +322,21 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
         text: t(Strings.view_export_to_excel),
         hidden: !permissions.exportable || isMobileApp(),
         id: DATASHEET_ID.VIEW_EXPORT,
-        arrow: <CalenderRightOutlined size={10} color={black[500]} />,
+        arrow: <ChevronRightOutlined size={10} color={black[500]} />,
         children: [{
-          icon: makeNodeIconComponent(NodeIcon.Csv), // <CsvIcon />,
+          // icon: makeNodeIconComponent(NodeIcon.Csv), // <CsvIcon />,
           text: t(Strings.csv),
           onClick: exportTypeCsv,
-          'data-sensors-click': true,
           id: DATASHEET_ID.VIEW_OPERATION_ITEM_EXPORT_VIEW_TO_CSV,
         }, {
-          icon: makeNodeIconComponent(NodeIcon.Excel), // <ExcelIcon />,
+          // icon: makeNodeIconComponent(NodeIcon.Excel), // <ExcelIcon />,
           text: t(Strings.excel),
           onClick: exportTypeXlsx,
-          'data-sensors-click': true,
           id: DATASHEET_ID.VIEW_OPERATION_ITEM_EXPORT_VIEW_TO_EXCEL,
         }, {
-          icon: makeNodeIconComponent(NodeIcon.Image), // <ImageIcon />,
+          // icon: makeNodeIconComponent(NodeIcon.Image), // <ImageIcon />,
           text: t(Strings.png),
           onClick: exportTypeImage,
-          'data-sensors-click': true,
           id: DATASHEET_ID.VIEW_OPERATION_ITEM_EXPORT_VIEW_TO_IMAGE,
           hidden: ![ViewType.Grid, ViewType.Gantt].includes(view?.type as ViewType),
           disabled: activeViewId !== currentViewId,
@@ -366,9 +350,8 @@ export const ContextMenu: React.FC<IContextMenuProps> = props => {
         text: t(Strings.delete_view),
         onClick: handleForDeleteView,
         hidden: !permissions.viewRemovable,
-        'data-sensors-click': true,
         id: DATASHEET_ID.VIEW_OPERATION_ITEM_DELETE,
-        disabled: (arg) => {
+        disabled: (arg: any) => {
           const { props: { tabIndex }} = arg;
           const view = viewList[tabIndex];
           setShowDeleteTip(Boolean(view.lockInfo));

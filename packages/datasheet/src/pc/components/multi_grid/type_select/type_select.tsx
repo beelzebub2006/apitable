@@ -61,6 +61,7 @@ const fieldSequence: FieldType[] = [
   FieldType.URL,
   FieldType.Phone,
   FieldType.Email,
+  FieldType.Cascader,
 ];
 
 interface ITypeSelectItemProps extends ITypeSelect {
@@ -71,7 +72,7 @@ interface ITypeSelectItemProps extends ITypeSelect {
   style?: React.CSSProperties;
 }
 
-const TypeSelectItem: React.FC<ITypeSelectItemProps> = props => {
+const TypeSelectItem: React.FC<React.PropsWithChildren<ITypeSelectItemProps>> = props => {
   const { fieldList, fieldType, index, setInfo, style } = props;
   const colors = useThemeColors();
   const divRef = useRef<HTMLDivElement>(null);
@@ -142,7 +143,7 @@ const TypeSelectItem: React.FC<ITypeSelectItemProps> = props => {
   );
 };
 
-function filterCommonGroup(fieldType: FieldType) {
+export function filterCommonGroup(fieldType: FieldType) {
   return FieldTypeDescriptionMap[fieldType] && FieldTypeDescriptionMap[fieldType].fieldGroup === FieldGroup.Common;
 }
 
@@ -150,7 +151,7 @@ function filterAdvanceGroup(fieldType: FieldType) {
   return FieldTypeDescriptionMap[fieldType] && FieldTypeDescriptionMap[fieldType].fieldGroup === FieldGroup.Advanced;
 }
 
-export const TypeSelectBase: React.FC<ITypeSelect> = props => {
+export const TypeSelectBase: React.FC<React.PropsWithChildren<ITypeSelect>> = props => {
   const colors = useThemeColors();
   const divRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -195,7 +196,7 @@ export const TypeSelectBase: React.FC<ITypeSelect> = props => {
     return FieldTypeDescriptionMap[fieldType] && FieldTypeDescriptionMap[fieldType].canBePrimaryField;
   }
 
-  const onScroll = ({ scrollTop, height, scrollHeight }) => {
+  const onScroll = ({ scrollTop, height, scrollHeight }: { scrollTop: number, height: number, scrollHeight: number }) => {
     const shadowEle = scrollShadowRef.current;
     if (!shadowEle) return;
     if (scrollTop + height > scrollHeight - 10) {
@@ -278,7 +279,7 @@ export const TypeSelectBase: React.FC<ITypeSelect> = props => {
 
   return (
     <div className={styles.typeSelect} ref={divRef}>
-      <h1>{t(Strings.select_one_field)}</h1>
+      {!isMobile && <h1>{t(Strings.select_one_field)}</h1>}
       {props.fieldIndex === 0 && (
         <div style={{ padding: '0 24px', marginBottom: 8 }}>
           <Typography variant="body4" color={colors.fc3}>

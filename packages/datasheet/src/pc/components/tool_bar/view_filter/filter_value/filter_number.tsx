@@ -16,23 +16,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import { useThemeColors } from '@apitable/components';
 import { FieldType, Selectors, IField } from '@apitable/core';
 import debounce from 'lodash/debounce';
 import { ScreenSize } from 'pc/components/common/component_display';
 import { IEditor } from 'pc/components/editors/interface';
+import { useShowViewLockModal } from 'pc/components/view_lock/use_show_view_lock_modal';
 import { useResponsive } from 'pc/hooks';
 import { useEffect, useRef } from 'react';
 import * as React from 'react';
 import { useSelector } from 'react-redux';
-import { NumberEditor } from '../../../editors/number_editor/number_editor';
+import { NumberEditor } from 'pc/components/editors/number_editor';
 import { IFilterNumberProps } from '../interface';
 import styles from './style.module.less';
 
-export const FilterNumber: React.FC<Omit<IFilterNumberProps, 'execute'>> = props => {
+export const FilterNumber: React.FC<React.PropsWithChildren<Omit<IFilterNumberProps, 'execute'>>> = props => {
   const { condition, onChange, field } = props;
   const datasheetId = useSelector(state => Selectors.getActiveDatasheetId(state))!;
   const numberRef = useRef<IEditor>(null);
   const defaultValue = condition.value;
+  const isViewLock = useShowViewLockModal();
+  const color = useThemeColors();
 
   useEffect(() => {
     numberRef.current && numberRef.current.onStartEdit(defaultValue ? defaultValue[0] : null);
@@ -69,15 +73,19 @@ export const FilterNumber: React.FC<Omit<IFilterNumberProps, 'execute'>> = props
     <div className={styles.numberContainer}>
       {numberTypes.has(fieldType) && (
         <NumberEditor
-          style={{}}
+          style={{
+            color: color.thirdLevelText,
+            cursor: isViewLock ? 'not-allowed' : 'pointer',
+          }}
           ref={numberRef}
-          editable
+          editable={!isViewLock}
           editing
           width={160}
           datasheetId={datasheetId}
           height={editorHeight}
           field={field}
           commandFn={commandNumberFn}
+          disabled={isViewLock}
         />
       )}
     </div>

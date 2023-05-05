@@ -17,19 +17,19 @@
  */
 
 import { integrateCdnHost, Strings, SystemConfig, t } from '@apitable/core';
-import { SystemConfigInterfaceNotifications, Templates, Types } from '@apitable/core/src/config/system_config.interface';
+import { Notifications, Templates, Types } from '@apitable/core/src/config/system_config.interface';
 import { TriggerCommands } from 'modules/shared/apphook/trigger_commands';
 import { getEnvVariables, getInitializationData } from 'pc/utils/env';
 import semver from 'semver';
 
-const jsonToObject = (object) => {
+const jsonToObject = (object: any) => {
   const obj = { ...object };
   Object.keys(object).forEach(i => {
     obj[i] = i;
   });
   return obj;
 };
-const NotificationsConfig = SystemConfig.notifications as any as SystemConfigInterfaceNotifications;
+const NotificationsConfig = SystemConfig.notifications as any as Notifications;
 
 const NotificationTypes = NotificationsConfig.types;
 const NotificationTemplates = NotificationsConfig.templates;

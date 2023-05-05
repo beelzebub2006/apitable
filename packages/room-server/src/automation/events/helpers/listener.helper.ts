@@ -16,7 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+<<<<<<<< HEAD:packages/room-server/src/unit/services/unit.tag.service.ts
+import { Injectable } from '@nestjs/common';
+import { UnitTagRepository } from '../repositories/unit.tag.repository';
+========
 import { EventRealTypeEnums, EventSourceTypeEnums, IEventInstance, IEventListenerOptions, IOPEvent } from '@apitable/core';
+>>>>>>>> remote/develop:packages/room-server/src/automation/events/helpers/listener.helper.ts
 
 /**
  * whether the robot event should to handle

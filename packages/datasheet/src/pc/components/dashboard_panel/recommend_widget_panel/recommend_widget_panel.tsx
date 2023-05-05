@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { Button, IconButton, Skeleton, useThemeColors } from '@apitable/components';
+import { Button, IconButton, Skeleton, useThemeColors, ThemeName } from '@apitable/components';
 import { CollaCommandName, ExecuteResult, integrateCdnHost, IReduxState, Settings, StoreActions, Strings, t, WidgetApi } from '@apitable/core';
-import { ChevronRightOutlined, CloseLargeOutlined } from '@apitable/icons';
+import { ChevronRightOutlined, CloseOutlined } from '@apitable/icons';
 import Image from 'next/image';
 import { Message, Tooltip } from 'pc/components/common';
 import { SearchPanel, SubColumnType } from 'pc/components/datasheet_search_panel';
@@ -28,8 +28,10 @@ import { useEffect, useState } from 'react';
 import { Scrollbars } from 'react-custom-scrollbars';
 import { useDispatch, useSelector } from 'react-redux';
 import { batchActions } from 'redux-batched-actions';
-import templateEmptyPng from 'static/icon/template/template_img_empty.png';
+import NotDataImgDark from 'static/icon/datasheet/empty_state_dark.png';
+import NotDataImgLight from 'static/icon/datasheet/empty_state_light.png';
 import styles from './style.module.less';
+import { getUrlWithHost } from 'pc/utils';
 
 interface IRecommendWidgetPanelProps {
   setVisibleRecommend: React.Dispatch<React.SetStateAction<boolean>>;
@@ -47,7 +49,7 @@ interface IRecentInstalledItem {
   widgetPackageIcon: string;
 }
 
-export const RecommendWidgetPanel: React.FC<IRecommendWidgetPanelProps> = (props) => {
+export const RecommendWidgetPanel: React.FC<React.PropsWithChildren<IRecommendWidgetPanelProps>> = (props) => {
   const { setVisibleRecommend, visibleRecommend, readonly, installedWidgetHandle } = props;
   const colors = useThemeColors();
   const [loading, setLoading] = useState(false);
@@ -58,8 +60,10 @@ export const RecommendWidgetPanel: React.FC<IRecommendWidgetPanelProps> = (props
   const [searchPanelVisible, setSearchPanelVisible] = useState(false);
   const rootNodeId = useSelector((state: IReduxState) => state.catalogTree.rootId);
   const dispatch = useDispatch();
+  const themeName = useSelector(state => state.theme);
+  const templateEmptyPng = themeName === ThemeName.Light ? NotDataImgLight : NotDataImgDark;
 
-  const importWidget = ({ widgetIds }) => {
+  const importWidget = ({ widgetIds }: any) => {
     quoteWidget(widgetIds);
     setVisibleRecommend(false);
     setSearchPanelVisible(false);
@@ -85,7 +89,7 @@ export const RecommendWidgetPanel: React.FC<IRecommendWidgetPanelProps> = (props
       setInstallingWidgetIds(null);
       const { success, data, message } = res.data;
       if (success) {
-        const importWidgetIds = data.map(item => item.id);
+        const importWidgetIds = data.map((item: any) => item.id);
         const result = resourceService.instance!.commandManager.execute({
           cmd: CollaCommandName.AddWidgetToDashboard,
           dashboardId: dashboardId!,
@@ -94,7 +98,7 @@ export const RecommendWidgetPanel: React.FC<IRecommendWidgetPanelProps> = (props
         });
         if (result.result === ExecuteResult.Success) {
           const _batchActions: any[] = [];
-          data.forEach(item => {
+          data.forEach((item: any) => {
             _batchActions.push(StoreActions.receiveInstallationWidget(item.id, item));
           });
           dispatch(batchActions(_batchActions));
@@ -132,7 +136,7 @@ export const RecommendWidgetPanel: React.FC<IRecommendWidgetPanelProps> = (props
             <IconButton
               onClick={() => { setVisibleRecommend(false); }}
               className={styles.closeIcon}
-              icon={() => <CloseLargeOutlined color={colors.thirdLevelText} />}
+              icon={() => <CloseOutlined color={colors.thirdLevelText} />}
             />
           </header>
           <div className={styles.operate}>
@@ -155,11 +159,11 @@ export const RecommendWidgetPanel: React.FC<IRecommendWidgetPanelProps> = (props
                   return <section className={styles.widgetItem} key={item.widgetId}>
                     <div className={styles.widgetContainers}>
                       <div className={styles.widgetIconBox}>
-                        <Image src={item.widgetPackageIcon} alt='' width={16} height={16} />
+                        <Image src={getUrlWithHost(item.widgetPackageIcon)} alt='' width={16} height={16} />
                       </div>
                       <div className={styles.widgetCover}>
                         <Image
-                          src={item.widgetPackageCover || integrateCdnHost(Settings.widget_default_cover_img.value)}
+                          src={getUrlWithHost(item.widgetPackageCover) || integrateCdnHost(Settings.widget_default_cover_img.value)}
                           alt=''
                           layout={'fill'}
                         />

@@ -10,19 +10,30 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--fc4);
 }
 
+.ant-radio {
+  top: 0.2em;
+}
+
 .am-picker-col-item,
+.adm-auto-center-content,
 .cp-time-picker,
 .ant-dropdown-menu-item,
 .ant-dropdown-menu-submenu-title,
 .ant-tabs-tab,
 .ant-drawer-title,
 .ant-radio-wrapper,
+.ant-select-dropdown,
 .ant-checkbox-wrapper {
   color: var(--fc1);
 }
 
+.ant-cascader-menu-item-loading-icon,
+.ant-cascader-menu-item-expand-icon,
 .ant-progress-text {
   color: var(--fc1) !important;
+}
+.ant-cascader-menu-item-expand-icon svg {
+  vertical-align: -0.2em;
 }
 
 .adm-popup-body,
@@ -47,6 +58,10 @@ h1, h2, h3, h4, h5, h6 {
   a {
     color: var(--fc1) !important;
   }
+}
+
+.ant-pagination-item-link {
+  border: none !important;
 }
 
 .ant-switch-handle::before {
@@ -87,6 +102,10 @@ circle.ant-progress-circle-trail {
   .ant-switch-handle::before {
     background-color: var(--staticWhite0);
   }
+}
+
+.ant-switch-checked:focus {
+  box-shadow: 0 0 0 2px var(--shadowCommonDefault);
 }
 
 .am-picker-col-mask {
@@ -140,6 +159,10 @@ circle.ant-progress-circle-trail {
   box-shadow: none;
 }
 
+.ant-table-cell-scrollbar:not([rowspan]) {
+  box-shadow: 0 1px 0 1px var(--lowestBg);
+}
+
 .ant-table-filter-trigger:hover,
 .ant-table-filter-trigger-container-open,
 .ant-table-filter-trigger-container:hover,
@@ -152,6 +175,10 @@ circle.ant-progress-circle-trail {
 .ant-radio-inner {
   background-color: var(--fill0);
   border-color: var(--fc3);
+}
+
+.ant-cascader-menu {
+  border-color: var(--lineColor);
 }
 
 .ant-table-filter-trigger-container-open {
@@ -177,6 +204,18 @@ circle.ant-progress-circle-trail {
   flex-direction: row-reverse;
 }
 
+.ant-select-tree-node-selected {
+  background-color: transparent;
+}
+
+.ant-select-tree-node-content-wrapper.ant-select-tree-node-selected {
+  background-color: transparent;
+}
+
+.ant-select-tree {
+  box-shadow: none;
+}
+
 .ant-drawer-close {
   position: absolute;
   right: 0;
@@ -192,9 +231,47 @@ button:focus-visible {
   outline: unset !important;
 }
 
+.taskMobileModal {
+  .ant-drawer-body {
+    background-color: inherit;
+  }
+}
+
+.taskModal {
+  border: 1px solid var(--borderCommon);
+  background-color: var(--bgCommonHighest);
+  box-shadow: var(--shadowCommonDefault);
+}
+
+.ant-table-cell-scrollbar:not([rowspan]){
+  box-shadow: none;
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--defaultBg);
+}
+
+@keyframes loading {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.circle-loading {
+  animation: loading 1s linear infinite;
+}
+
+.cp-time-picker-input::placeholder {
+  color: #7e8791;
+  opacity: 1;
+}
+
+
 @media screen and (max-width: 768px) {
   .ant-drawer {
-    z-index: 1200;
+    z-index: 999;
+  }
+  .ant-message {
+    z-index: 1201;
   }
   .ant-drawer-bottom > .ant-drawer-content-wrapper {
     position: fixed;

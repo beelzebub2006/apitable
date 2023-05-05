@@ -25,6 +25,7 @@ import { ModalOutsideOperate } from 'pc/components/common/modal_outside_operate'
 // @ts-ignore
 import { isWecomFunc } from 'enterprise';
 import { WECOM_ROBOT_URL } from 'pc/utils';
+import { getEnvVariables } from 'pc/utils/env';
 import { getStorage, setStorage, StorageMethod, StorageName } from 'pc/utils/storage';
 import * as React from 'react';
 import { useMemo, useRef } from 'react';
@@ -39,7 +40,7 @@ interface IModalProps {
   feature: ApiInterface.ILabsFeature
 }
 
-export const Modal: React.FC<IModalProps> = props => {
+export const Modal: React.FC<React.PropsWithChildren<IModalProps>> = props => {
   const { onClose, feature, status } = props;
   const config = SystemConfig.test_function[feature.key];
   const loadingMessage = useRef<boolean>(false);
@@ -57,7 +58,7 @@ export const Modal: React.FC<IModalProps> = props => {
         if (isToOpen) {
           setStorage(StorageName.TestFunctions, { ...testFunctionsStorage, [feature.key]: t(Strings[config.feature_name]) });
         } else {
-          setStorage(StorageName.TestFunctions, pickBy(testFunctionsStorage, (value, key) => key !== feature.key), StorageMethod.Set);
+          setStorage(StorageName.TestFunctions, pickBy(testFunctionsStorage, (_value, key) => key !== feature.key), StorageMethod.Set);
         }
         Message.success({ content: isToOpen ? t(Strings.marketplace_app_enable_succeed) : t(Strings.marketplace_app_disable_succeed) });
         loadingMessage.current = true;
@@ -133,7 +134,7 @@ export const Modal: React.FC<IModalProps> = props => {
           </div>
           {config.modal?.info_image && <div className={style.modalImg}>
             <Image
-              src={integrateCdnHost(config.modal?.info_image)}
+              src={integrateCdnHost(getEnvVariables()[config.modal?.info_image])}
               width='100%'
               layout={'fill'}
             />

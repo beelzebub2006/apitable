@@ -17,7 +17,9 @@
  */
 
 import { Api, ConfigConstant, IReduxState, MAX_NAME_STRING_LENGTH, StoreActions, Strings, t } from '@apitable/core';
-import { Message, NormalModal, WithTipTextInput } from 'pc/components/common';
+import { Message } from 'pc/components/common';
+import { NormalModal } from 'pc/components/common/modal/normal_modal';
+import { WithTipTextInput } from 'pc/components/common/input/with_tip_input';
 import { useAppDispatch } from 'pc/hooks/use_app_dispatch';
 import * as React from 'react';
 import { Dispatch, FC, SetStateAction, useState } from 'react';
@@ -28,13 +30,13 @@ interface IModalProps {
   setModalVisible: Dispatch<SetStateAction<boolean>>;
 }
 
-export const RenameTeamModal: FC<IModalProps> = props => {
+export const RenameTeamModal: FC<React.PropsWithChildren<IModalProps>> = props => {
   const dispatch = useAppDispatch();
   const [err, setErr] = useState('');
   const {
     spaceId,
-    rightClickTeamInfoInSpace,
     user,
+    rightClickTeamInfoInSpace,
   } = useSelector((state: IReduxState) => ({
     spaceId: state.space.activeId || '',
     rightClickTeamInfoInSpace: state.spaceMemberManage.rightClickTeamInfoInSpace,
@@ -56,7 +58,11 @@ export const RenameTeamModal: FC<IModalProps> = props => {
         Api.updateTeamInfo(teamId, parent, inputContent).then(res => {
           const { success } = res.data;
           if (success) {
-            user && dispatch(StoreActions.getTeamListDataInSpace(spaceId, user));
+            if(parentId) {
+              dispatch(StoreActions.getSubTeam(parentId));
+            } else {
+              dispatch(StoreActions.getTeamListData(user!));
+            }
             props.setModalVisible(false);
             Message.success({ content: t(Strings.rename_team_success) });
           } else {

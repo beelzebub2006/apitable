@@ -18,7 +18,7 @@
 
 import { useThemeColors } from '@apitable/components';
 import { IField, ISelectField, ISelectFieldOption } from '@apitable/core';
-import { DragOutlined } from '@apitable/icons';
+import { DeleteOutlined, DragOutlined } from '@apitable/icons';
 import { Input } from 'antd';
 import classNames from 'classnames';
 import produce from 'immer';
@@ -27,7 +27,6 @@ import { stopPropagation } from 'pc/utils';
 import * as React from 'react';
 import { useRef } from 'react';
 import { Draggable } from 'react-beautiful-dnd';
-import IconDelete from 'static/icon/common/common_icon_delete.svg';
 import styles from '../styles.module.less';
 
 export interface IFormatSelectItem {
@@ -39,11 +38,12 @@ export interface IFormatSelectItem {
   addNewItem: () => void;
 }
 
-export const FormatSelectItem: React.FC<IFormatSelectItem> = props => {
+export const FormatSelectItem: React.FC<React.PropsWithChildren<IFormatSelectItem>> = props => {
   const { item, index, onOptionChange, currentField, setCurrentField, addNewItem } = props;
   const colorPickerRef = useRef(null);
+  const isTypingRef = useRef(false);
   const colors = useThemeColors();
-  const onChange = (index, e) => {
+  const onChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (value.length > 100 && value.length > item.name.length) {
       return;
@@ -77,6 +77,7 @@ export const FormatSelectItem: React.FC<IFormatSelectItem> = props => {
   };
 
   const pressEnter = (e: React.KeyboardEvent) => {
+    if (isTypingRef.current) return;
     (e.target as HTMLInputElement).blur();
     addNewItem();
   };
@@ -95,7 +96,7 @@ export const FormatSelectItem: React.FC<IFormatSelectItem> = props => {
           })}
           {...provided.dragHandleProps}
         >
-          <DragOutlined size={10} color={colors.thirdLevelText} />
+          <DragOutlined size={16} color={colors.thirdLevelText} />
         </div>
         <div onClick={stopPropagation} ref={colorPickerRef}>
           <ColorPicker onChange={onOptionChange} option={item} mask />
@@ -107,10 +108,12 @@ export const FormatSelectItem: React.FC<IFormatSelectItem> = props => {
             value={item.name}
             autoFocus={index === currentField.property.options.length - 1}
             onPressEnter={pressEnter}
+            onCompositionStart={() => isTypingRef.current = true}
+            onCompositionEnd={() => isTypingRef.current = false}
           />
         </div>
         <div className={styles.iconDelete} onClick={deleteItem.bind(null, index)}>
-          <IconDelete width={15} height={15} fill={colors.fourthLevelText} />
+          <DeleteOutlined size={16} color={colors.fourthLevelText} />
         </div>
       </div>
     )}

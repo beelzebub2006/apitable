@@ -18,7 +18,7 @@
 
 import {
   CollaCommandName, DatasheetActions, Events, ExecuteResult, Field, FieldType, FieldTypeDescriptionMap, getFieldClass, getNewId, IDPrefix, IField,
-  ISegment, IViewColumn, Player, Selectors, StoreActions, Strings, t,
+  ISegment, IViewColumn, Player, Selectors, StoreActions, Strings, t, DatasheetApi,
 } from '@apitable/core';
 import { Button, Checkbox, TextButton, useListenVisualHeight, useThemeColors } from '@apitable/components';
 import { useKeyPress } from 'ahooks';
@@ -40,15 +40,15 @@ import { resourceService } from 'pc/resource_service';
 import { store } from 'pc/store';
 import { ButtonOperateType, getParentNodeByClass, isTouchDevice } from 'pc/utils';
 import * as React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, FC, PropsWithChildren } from 'react';
 import { shallowEqual, useDispatch, useSelector } from 'react-redux';
-import HelpIcon from 'static/icon/common/common_icon_information.svg';
 import { stopPropagation } from '../../../utils/dom';
 import { FieldFormat } from '../format';
 import { useFieldOperate } from '../hooks';
 import { checkFactory, CheckFieldSettingBase } from './check_factory';
 import { FieldTypeSelect } from './field_type_select';
 import styles from './styles.module.less';
+import { QuestionCircleOutlined, WarnCircleFilled } from '@apitable/icons';
 
 export const OPERATE_WIDTH = parseInt(styles.fieldSettingBoxWidth, 10); // The width of the operation box
 // const EXCEPT_SCROLL_HEIGHT = 85; // Height of the non-scrollable part at the bottom, outside the area to be scrolled
@@ -77,11 +77,11 @@ const MAX_HEIGHT = 640;
 /**
  * This component is reused by the Magic Form and Expand Modal, except for the DomGrid, which evokes it.
  */
-export const FieldSettingBase: React.FC<IFieldSettingProps> = props => {
+const FieldSettingBase: FC<PropsWithChildren<IFieldSettingProps>> = props => {
   const colors = useThemeColors();
   const { scrollToItem, datasheetId: propDatasheetId, viewId: propViewId, targetDOM, showAdvancedFields = true } = props;
   const dispatch = useDispatch();
-  const { visibleColumnsCount, columns, columnCount, snapshot, activeFieldState, viewId, linkId, datasheetId } = useSelector(state => {
+  const { visibleColumnsCount, columns, columnCount, snapshot, activeFieldState, viewId, linkId, datasheetId, spaceId } = useSelector(state => {
     const columnCount = Selectors.getColumnCount(state)!;
     const datasheetId = propDatasheetId || Selectors.getActiveDatasheetId(state)!;
     const snapshot = Selectors.getSnapshot(state, datasheetId)!;
@@ -90,6 +90,7 @@ export const FieldSettingBase: React.FC<IFieldSettingProps> = props => {
     const linkId = Selectors.getLinkId(state);
     const visibleColumns = Selectors.getVisibleColumns(state);
     const view = Selectors.getCurrentView(state, datasheetId)!;
+    const spaceId = Selectors.activeSpaceId(state)!;
     return {
       visibleColumnsCount: visibleColumns?.length || 0,
       columns: view.columns,
@@ -99,6 +100,7 @@ export const FieldSettingBase: React.FC<IFieldSettingProps> = props => {
       viewId,
       linkId,
       datasheetId,
+      spaceId
     };
   }, shallowEqual);
 
@@ -136,13 +138,21 @@ export const FieldSettingBase: React.FC<IFieldSettingProps> = props => {
     },
   });
 
+  const [submitPending, setSubmitPending] = useState(false);
+
   const hideOperateBox = useCallback(
     () => {
+      if (submitPending && field.type === FieldType.Cascader) {
+        Message.warning({
+          content: t(Strings.cascader_snapshot_updating),
+        });
+        return;
+      }
       dispatch(StoreActions.clearActiveFieldState(datasheetId));
       props.onClose?.();
     },
     // eslint-disable-next-line
-    [dispatch, datasheetId],
+    [dispatch, datasheetId, submitPending],
   );
 
   useEffect(() => {
@@ -191,7 +201,6 @@ export const FieldSettingBase: React.FC<IFieldSettingProps> = props => {
   const [optionErrMsg, setOptionErrMsg] = useState('');
 
   const { hasOptSetting } = FieldTypeDescriptionMap[currentField.type];
-  const commandManager = resourceService.instance!.commandManager;
 
   const isComputedField = Field.bindModel(currentField).isComputed;
 
@@ -248,26 +257,6 @@ export const FieldSettingBase: React.FC<IFieldSettingProps> = props => {
     // eslint-disable-next-line
   }, [activeFieldState.fieldId]);
 
-  useEffect(() => {
-    if (isMobile) {
-      return;
-    }
-
-    function closeAndSave(e: MouseEvent) {
-      const modalRoot = getParentNodeByClass(e.target as HTMLElement, 'ant-modal-root');
-      const isClickInExpandRecord = getParentNodeByClass(e.target as HTMLElement, EXPAND_RECORD_CLS);
-
-      if (!modalRoot || isClickInExpandRecord) {
-        onSubmit(true);
-      }
-    }
-
-    document.addEventListener('mousedown', closeAndSave);
-    return () => {
-      document.removeEventListener('mousedown', closeAndSave);
-    };
-  });
-
   const onChange = (e: React.ChangeEvent<any>) => {
     const value = e.target.value;
     if (value.length > 100 && value.length > currentField.name.length) {
@@ -303,7 +292,7 @@ export const FieldSettingBase: React.FC<IFieldSettingProps> = props => {
   };
 
   const modifyFieldType = (newField: IField) => {
-    const result = commandManager.execute({
+    const result = resourceService.instance!.commandManager.execute({
       cmd: CollaCommandName.SetFieldAttr,
       fieldId: currentField.id,
       data: {
@@ -314,22 +303,45 @@ export const FieldSettingBase: React.FC<IFieldSettingProps> = props => {
 
     // If a mounted dom is specified, no prompt will be given
     if (ExecuteResult.Success === result.result && !targetDOM) {
-      notify.open({
-        message: t(Strings.toast_field_configuration_success),
-        key: NotifyKey.ChangeFieldSetting,
-      });
+      // cascader field linkedDatasheetId changes need update cascader snapshot
+      if (newField.type === FieldType.Cascader && fieldInfoForState.property?.linkedDatasheetId !== newField.property.linkedDatasheetId) {
+        setSubmitPending(true);
+        DatasheetApi.updateCascaderSnapshot({
+          spaceId,
+          datasheetId,
+          fieldId: newField.id,
+          linkedDatasheetId: newField.property.linkedDatasheetId,
+          linkedViewId: newField.property.linkedViewId,
+        }).then(() => {
+          setSubmitPending(false);
+          notify.open({
+            message: t(Strings.toast_field_configuration_success),
+            key: NotifyKey.ChangeFieldSetting,
+          });
+          hideOperateBox();
+          return;
+        });
+      } else {
+        notify.open({
+          message: t(Strings.toast_field_configuration_success),
+          key: NotifyKey.ChangeFieldSetting,
+        });
+        hideOperateBox();
+        return;
+      }
+    } else {
+      hideOperateBox();
     }
-    hideOperateBox();
   };
 
-  const handleFieldRequiredChange = required => {
+  const handleFieldRequiredChange = (required: boolean) => {
     setCurrentField((curField: IField) => {
       return { ...curField, required };
     });
   };
 
-  function addField(newField: IField, colIndex?: number) {
-    const result = commandManager.execute({
+  const addField = (newField: IField, colIndex?: number) => {
+    const result = resourceService.instance!.commandManager.execute({
       cmd: CollaCommandName.AddFields,
       data: [
         {
@@ -344,24 +356,37 @@ export const FieldSettingBase: React.FC<IFieldSettingProps> = props => {
       datasheetId,
     });
     if (ExecuteResult.Success === result.result) {
-      // If a mounted dom is specified, no prompt will be given
-      if (!targetDOM) {
+      const resultCallback = () => {
         notify.open({
           message: t(Strings.toast_add_field_success),
           key: NotifyKey.AddField,
         });
-      }
-
-      hideOperateBox();
-
-      setTimeout(() => {
-        scrollToItem &&
-        scrollToItem({
-          columnIndex: visibleColumnsCount,
+        hideOperateBox();
+        setTimeout(() => {
+          scrollToItem &&
+          scrollToItem({
+            columnIndex: visibleColumnsCount,
+          });
+        }, 0);
+      };
+      // cascader field add need update cascader snapshot
+      if (newField.type === FieldType.Cascader) {
+        setSubmitPending(true);
+        DatasheetApi.updateCascaderSnapshot({
+          spaceId,
+          datasheetId,
+          fieldId: newField.id,
+          linkedDatasheetId: newField.property.linkedDatasheetId,
+          linkedViewId: newField.property.linkedViewId,
+        }).then(() => {
+          setSubmitPending(false);
+          resultCallback();
         });
-      }, 0);
+      } else {
+        resultCallback();
+      }
     }
-  }
+  };
 
   function renderModal(errMsg: string) {
     Modal.confirm({
@@ -427,6 +452,26 @@ export const FieldSettingBase: React.FC<IFieldSettingProps> = props => {
     }
   };
 
+  useEffect(() => {
+    if (isMobile) {
+      return;
+    }
+
+    function closeAndSave(e: MouseEvent) {
+      const modalRoot = getParentNodeByClass(e.target as HTMLElement, 'ant-modal-root');
+      const isClickInExpandRecord = getParentNodeByClass(e.target as HTMLElement, EXPAND_RECORD_CLS);
+
+      if (!modalRoot || isClickInExpandRecord) {
+        onSubmit(true);
+      }
+    }
+
+    document.addEventListener('mousedown', closeAndSave);
+    return () => {
+      document.removeEventListener('mousedown', closeAndSave);
+    };
+  });
+
   function onPressEnter(e: React.KeyboardEvent) {
     if (e.shiftKey) return;
     stopPropagation(e);
@@ -461,14 +506,22 @@ export const FieldSettingBase: React.FC<IFieldSettingProps> = props => {
         isMobile={isMobile}
         showAdvancedFields={showAdvancedFields}
       />
-      {hasOptSetting && <Divider />}
-      <FieldFormat
-        from={activeFieldState.from}
-        currentField={currentField}
-        setCurrentField={setCurrentField}
-        hideOperateBox={hideOperateBox}
-        datasheetId={propDatasheetId}
-      />
+      {isMobile && currentField.type === FieldType.Cascader ? (
+        <div className={styles.cascaderMobileTip}>
+          <WarnCircleFilled color={colors.textCommonTertiary} />
+          {t(Strings.cascader_mobile_unavailable_tip)}
+        </div>
+      ) : (
+        <>
+          {hasOptSetting && <Divider />}
+          <FieldFormat
+            from={activeFieldState.from}
+            currentField={currentField}
+            setCurrentField={setCurrentField}
+            hideOperateBox={hideOperateBox}
+            datasheetId={propDatasheetId}
+          />
+        </>)}
       {optionErrMsg && <section className={styles.error}>{optionErrMsg}</section>}
 
       {!isComputedField && (
@@ -490,7 +543,7 @@ export const FieldSettingBase: React.FC<IFieldSettingProps> = props => {
               }
             >
               <span className={styles.requiredTip}>
-                <HelpIcon fill='currentColor' />
+                <QuestionCircleOutlined color='currentColor' />
               </span>
             </Tooltip>
           </div>
@@ -527,6 +580,7 @@ export const FieldSettingBase: React.FC<IFieldSettingProps> = props => {
               onClick={() => {
                 onSubmit();
               }}
+              loading={submitPending}
               color='primary'
             >
               {t(Strings.submit)}

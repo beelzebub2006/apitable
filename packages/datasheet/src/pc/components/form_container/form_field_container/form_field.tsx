@@ -57,9 +57,9 @@ const needPositionField = [FieldType.Member];
 
 const needTriggerStartEditField = [FieldType.Number, FieldType.Percent, FieldType.Currency];
 
-const compactField = [FieldType.SingleSelect, FieldType.MultiSelect];
+const compactField = [FieldType.SingleSelect, FieldType.MultiSelect, FieldType.Cascader];
 
-export const FormField: React.FC<IFormFieldProps> = props => {
+export const FormField: React.FC<React.PropsWithChildren<IFormFieldProps>> = props => {
   const colors = useThemeColors();
   const shareId = useSelector(state => state.pageParams.shareId);
   const { datasheetId, field, isFocus = false, setFocusId, onClose, editable, recordId } = props;

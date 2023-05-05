@@ -54,12 +54,19 @@
 }
 
 .timeInput {
-  width: 33%;
+  width: 42px !important;
+
+  input {
+    padding-right: 0 !important;
+  }
+}
+
+.abbr {
+  color: var(--fc1);
 }
 
 .dateEditor {
   position: relative;
-  box-sizing: border-box;
   box-sizing: border-box;
   border-radius: 1px;
   display: flex;
@@ -78,6 +85,11 @@
       line-height: 24px;
       box-sizing: border-box;
       padding: 3px 10px;
+
+      &[disabled] {
+        color: var(--thirdLevelText) !important;
+        cursor: not-allowed;
+      }
 
       &.cp-calendar-picker-input {
         padding-right: 0;
@@ -99,17 +111,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+
   .dateContent {
     display: flex;
     flex: auto;
+    align-items: center;
   }
+
   .limitDateWidth {
     :global {
       .cp-calendar-picker {
-        max-width: 88px;
+        max-width: 90px;
       }
     }
   }
+
   .alarm {
     margin-right: 8px;
     display: flex;

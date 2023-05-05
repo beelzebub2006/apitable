@@ -19,10 +19,10 @@
 import { Loading, lightColors } from '@apitable/components';
 import {
   DATASHEET_ID,
-  DateFormat,
+  DateFormat, diffTimeZone,
   Field,
   getDay,
-  getLanguage,
+  getLanguage, getTimeZoneAbbrByUtc,
   getToday,
   IDateTimeField,
   IRecordAlarmClient,
@@ -35,7 +35,7 @@ import {
   t,
   WithOptional,
 } from '@apitable/core';
-import { NotificationSmallOutlined } from '@apitable/icons';
+import { NotificationOutlined } from '@apitable/icons';
 import { usePrevious } from 'ahooks';
 import enUS from 'antd/es/date-picker/locale/en_US';
 import zhCN from 'antd/es/date-picker/locale/zh_CN';
@@ -43,6 +43,8 @@ import classNames from 'classnames';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
 import { isEqual } from 'lodash';
 import { Tooltip } from 'pc/components/common';
 import { ComponentDisplay, ScreenSize } from 'pc/components/common/component_display';
@@ -60,6 +62,8 @@ import { TimePicker } from './time_picker_only';
 import { DateTimeAlarm } from 'enterprise';
 
 dayjs.extend(customParseFormat);
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const DEFAULT_FORMAT = 'YYYY-MM-DD';
 
@@ -88,6 +92,7 @@ export interface IDateTimeEditorProps extends IBaseEditorProps {
   recordId?: string;
   curAlarm?: WithOptional<IRecordAlarmClient, 'id'>;
   setCurAlarm?: (val?: WithOptional<IRecordAlarmClient, 'id'>) => void;
+  disabled?: boolean;
 }
 
 const DATE_COMPONENT_HEIGHT = 264;
@@ -102,9 +107,10 @@ export class DateTimeEditorBase extends React.PureComponent<IDateTimeEditorProps
     bottom: ['tl', 'bl'],
   };
 
-  state: IDateTimeEditorState = {
+  override state: IDateTimeEditorState = {
     dateValue: '',
-    displayDateStr: '',
+    displayDateStr: this.props.dataValue ?
+      dayjs(this.props.dataValue).format(Field.bindModel(this.props.field).dateFormat) : '',
     timeValue: '',
     dateOpen: false,
     timeOpen: false,
@@ -135,14 +141,14 @@ export class DateTimeEditorBase extends React.PureComponent<IDateTimeEditorProps
       });
       return;
     }
-    const { dateFormat } = Field.bindModel(this.props.field);
+    const { dateFormat, timeZone } = Field.bindModel(this.props.field);
     const timeFormat = 'HH:mm';
     this.timestamp = timestamp;
     const dateTime = dayjs(timestamp);
     this.setState({
-      dateValue: dateTime.format(DEFAULT_FORMAT),
-      displayDateStr: dateTime.format(dateFormat),
-      timeValue: dateTime.format(timeFormat),
+      dateValue: timeZone ? dateTime.tz(timeZone).format(DEFAULT_FORMAT) : dateTime.format(DEFAULT_FORMAT),
+      displayDateStr: timeZone ? dateTime.tz(timeZone).format(dateFormat) : dateTime.format(dateFormat),
+      timeValue: timeZone ? dateTime.tz(timeZone).format(timeFormat) : dateTime.format(timeFormat),
     });
   }
 
@@ -152,6 +158,7 @@ export class DateTimeEditorBase extends React.PureComponent<IDateTimeEditorProps
 
   onDateValueChange = (date: dayjs.Dayjs | null, dateValue: string, displayDateStr: string, isSetTime?: boolean) => {
     const { timeValue, timeOpen } = this.state;
+    const { timeZone } = Field.bindModel(this.props.field);
     if (date) {
       this.timestamp = date.valueOf();
     } else {
@@ -159,10 +166,25 @@ export class DateTimeEditorBase extends React.PureComponent<IDateTimeEditorProps
     }
     const ignoreSetTime = isSetTime ? false : !timeOpen && !timeValue;
 
+    let curTimeValue = timeValue;
+    if (date && !ignoreSetTime) {
+      if (timeZone) {
+        curTimeValue = dayjs(date?.format('YYYY-MM-DD HH:mm')).tz(timeZone).format('HH:mm');
+      } else {
+        curTimeValue = date.format('HH:mm');
+      }
+    } else if (date === null) {
+      curTimeValue = '';
+    }
+
+    if (timeZone && !curTimeValue) {
+      curTimeValue = dayjs.tz(dayjs(), timeZone).format('HH:mm');
+    }
+
     return this.setState({
       dateValue,
       displayDateStr,
-      timeValue: date && !ignoreSetTime ? date.format('HH:mm') : date === null ? '' : timeValue,
+      timeValue: curTimeValue,
     });
   };
 
@@ -180,7 +202,7 @@ export class DateTimeEditorBase extends React.PureComponent<IDateTimeEditorProps
     }
   };
 
-  componentDidUpdate(cur: IDateTimeEditorProps) {
+  override componentDidUpdate(cur: IDateTimeEditorProps) {
     if (this.props.editing !== cur.editing) {
       this.setState({
         isIllegal: false,
@@ -217,7 +239,7 @@ export class DateTimeEditorBase extends React.PureComponent<IDateTimeEditorProps
     const { property } = field;
     const { dateValue } = this.state;
     let { timeValue } = this.state;
-    const { timeFormat } = Field.bindModel(this.props.field);
+    const { timeFormat, timeZone } = Field.bindModel(this.props.field);
     if (!dateValue && !timeValue) {
       return null;
     }
@@ -247,7 +269,7 @@ export class DateTimeEditorBase extends React.PureComponent<IDateTimeEditorProps
       }
     }
     const time = str2time(timeValue, field) || 0;
-    return dateTimestamp + time;
+    return dateTimestamp + time + diffTimeZone(timeZone);
   }
 
   onEndEdit(cancel: boolean, clear = true) {
@@ -370,7 +392,7 @@ export class DateTimeEditorBase extends React.PureComponent<IDateTimeEditorProps
     });
   };
 
-  render() {
+  override render() {
     const lang = {
       'zh-CN': zhCN,
       'en-US': enUS,
@@ -384,7 +406,8 @@ export class DateTimeEditorBase extends React.PureComponent<IDateTimeEditorProps
       nextMonth: '',
     };
     const { field, recordId, datasheetId } = this.props;
-    const { dateFormat, timeFormat } = Field.bindModel(field);
+    const { dateFormat, timeFormat, includeTimeZone, timeZone } = Field.bindModel(field);
+
     const { timeValue, dateValue, displayDateStr, dateOpen, timeOpen, point, isIllegal } = this.state;
     const { editable, showAlarm } = this.props;
 
@@ -420,6 +443,12 @@ export class DateTimeEditorBase extends React.PureComponent<IDateTimeEditorProps
       [style.only]: !field.property.includeTime,
     });
 
+    let abbr = '';
+    if (includeTimeZone) {
+      const tz = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      abbr = getTimeZoneAbbrByUtc(tz)!;
+    }
+
     return (
       <div
         className={style.dateEditor}
@@ -432,7 +461,7 @@ export class DateTimeEditorBase extends React.PureComponent<IDateTimeEditorProps
         onClick={e => e.stopPropagation}
         onWheel={stopPropagation}
       >
-        <Tooltip visible={isIllegal} getTooltipContainer={this.getCalendarContainer} title={t(Strings.date_cell_input_tips)} placement='top'>
+        <Tooltip open={isIllegal} getTooltipContainer={this.getCalendarContainer} title={t(Strings.date_cell_input_tips)} placement='top'>
           <div className={style.dateWrapper}>
             <div
               className={classNames(style.dateContent, {
@@ -463,12 +492,13 @@ export class DateTimeEditorBase extends React.PureComponent<IDateTimeEditorProps
                   disabled={Boolean(this.props.disabled)}
                   onKeyDown={this.keyDown}
                   renderFooter={() =>
-                    showAlarm && getEnvVariables().RECORD_TASK_REMINDER_VISIBLE && DateTimeAlarm && (
+                    showAlarm && getEnvVariables().RECORD_TASK_REMINDER_VISIBLE && DateTimeAlarm && dateValue && (
                       <DateTimeAlarm
                         datasheetId={datasheetId}
                         recordId={recordId || ''}
                         fieldId={field.id}
                         includeTime={field.property.includeTime}
+                        timeZone={timeZone}
                         dateValue={dateValue}
                         timeValue={timeValue}
                         curAlarm={this.props.curAlarm}
@@ -499,12 +529,16 @@ export class DateTimeEditorBase extends React.PureComponent<IDateTimeEditorProps
                   onChange={this.onTimeValueChange}
                   onOpenChange={this.onTimeOpenChange}
                   value={timeValue}
+                  timeZone={timeZone}
                 />
+              )}
+              {abbr && (
+                <span className={style.abbr}>({abbr})</span>
               )}
             </div>
             {showAlarm && getEnvVariables().RECORD_TASK_REMINDER_VISIBLE && Boolean(this.props.curAlarm) && (
               <span className={style.alarm}>
-                <NotificationSmallOutlined color={lightColors.deepPurple[500]} size={14} />
+                <NotificationOutlined color={lightColors.deepPurple[500]} size={16} />
               </span>
             )}
           </div>

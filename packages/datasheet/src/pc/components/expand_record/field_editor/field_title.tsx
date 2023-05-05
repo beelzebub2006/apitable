@@ -31,7 +31,7 @@ import {
   t,
   ViewType,
 } from '@apitable/core';
-import { AddOutlined, EditDescribeFilled, EditDescribeOutlined, MoreOutlined } from '@apitable/icons';
+import { AddOutlined, InfoCircleOutlined, MoreOutlined } from '@apitable/icons';
 import classNames from 'classnames';
 import { Tooltip } from 'pc/components/common';
 import { ScreenSize } from 'pc/components/common/component_display';
@@ -84,7 +84,7 @@ export interface IFieldDescCollapseStatus {
   };
 }
 
-export const FieldTitle: React.FC<IFieldTitleProps> = props => {
+export const FieldTitle: React.FC<React.PropsWithChildren<IFieldTitleProps>> = props => {
   const {
     isFocus,
     recordId,
@@ -171,8 +171,8 @@ export const FieldTitle: React.FC<IFieldTitleProps> = props => {
     });
   };
   const columnHidden = view.columns[columnIndexOfView]?.hidden;
-  const onShowMenu = e => {
-    showMenu(e, {
+  const onShowMenu = (e: MouseEvent) => {
+    showMenu((e as any), {
       props: {
         onInsertAbove: firstColumnId !== fieldId ? () => onAppendField(e, Number(columnIndexOfView) - 1, columnHidden) : null,
         onInsertBelow: () => onAppendField(e, Number(columnIndexOfView), columnHidden),
@@ -205,22 +205,18 @@ export const FieldTitle: React.FC<IFieldTitleProps> = props => {
             {field.name}
           </div>
 
-          {!hideDesc && Field.bindModel(field).isComputed && renderComputeFieldError(field, t(Strings.field_configuration_err), isMobile)}
+          {!hideDesc && (Field.bindModel(field).isComputed || field.type === FieldType.Cascader) &&
+            renderComputeFieldError(field, t(Strings.field_configuration_err), isMobile)}
 
           {field.desc && !hideDesc && (
             <div className={styles.iconDisplayIcon} onMouseDown={stopPropagation}>
-              <span onClick={toggleCollapseDesc}>{showDesc ? <EditDescribeFilled /> : <EditDescribeOutlined />}</span>
+              <span onClick={toggleCollapseDesc}>{showDesc ? <InfoCircleOutlined /> : <InfoCircleOutlined />}</span>
             </div>
           )}
         </div>
         <div className={classNames('right', styles.right)}>
           {field.type === FieldType.Attachment && (cellValue as IAttachmentValue[])?.length && !isMobile && allowDownload && (
             <BulkDownload files={cellValue as IAttachmentValue[]} className="more" datasheetId={datasheetId} />
-          )}
-          {showAlarm && field.type === FieldType.DateTime && isMobile && Boolean(cellValue) && (
-            <LinkButton underline={false} onClick={() => setOpenAlarm(true)}>
-              {t(Strings.task_reminder_entry)}
-            </LinkButton>
           )}
 
           {!hideLock && <FieldPermissionLockEnhance fieldId={fieldId} className="more" />}
@@ -248,6 +244,12 @@ export const FieldTitle: React.FC<IFieldTitleProps> = props => {
               </Tooltip>
             </div>
           )}
+
+          {showAlarm && field.type === FieldType.DateTime && isMobile && Boolean(cellValue) && (
+            <LinkButton underline={false} onClick={() => setOpenAlarm(true)}>
+              {t(Strings.task_reminder_entry)}
+            </LinkButton>
+          )}
         </div>
 
         {Boolean(recordId) && openAlarm && (
@@ -257,6 +259,7 @@ export const FieldTitle: React.FC<IFieldTitleProps> = props => {
             fieldId={fieldId}
             setOpenAlarm={setOpenAlarm}
             includeTime={field.property.includeTime}
+            timeZone={field.property.timeZone}
             cellValue={cellValue}
           />
         )}

@@ -18,6 +18,6 @@
 
 export {};
 
-export type StringSaaSKeysMapType={};
+export type StringSaaSKeysMapType = {};
 
-export type StringSaaSKeysType={};
+export type StringSaaSKeysType = {};

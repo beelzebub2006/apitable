@@ -29,6 +29,7 @@ import {
   moveArrayElement,
   SelectField,
   Selectors,
+  IField,
 } from '@apitable/core';
 import { produce } from 'immer';
 import { ScreenSize } from 'pc/components/common/component_display';
@@ -44,9 +45,10 @@ import styles from './style.module.less';
 import { useFocusEffect } from '../hooks/use_focus_effect';
 
 export interface IEditorProps extends IBaseEditorProps {
-  style: React.CSSProperties;
+  style?: React.CSSProperties;
   editing: boolean;
   recordId: string;
+  editable: boolean;
   toggleEditing?: (next?: boolean) => void;
 }
 
@@ -106,9 +108,9 @@ export const OptionsEditorBase: React.ForwardRefRenderFunction<IEditor, IEditorP
 
   const [draggingId, setDraggingId] = useState<string | undefined>();
 
-  function afterDrag(trulyOldIndex, trulyNewIndex) {
+  function afterDrag(trulyOldIndex: number, trulyNewIndex: number) {
     setCurrentField(field => {
-      return produce(field, draft => {
+      return produce(field, (draft: IField) => {
         moveArrayElement(draft.property.options, trulyOldIndex, trulyNewIndex);
         return draft;
       });
@@ -160,7 +162,7 @@ export const OptionsEditorBase: React.ForwardRefRenderFunction<IEditor, IEditorP
   return (
     <PopStructure style={style} height={height} editing={editing} className={styles.optionsEditor} width={width} onClose={onClose}>
       <OptionList
-        listData={Number(style.width) === 0 ? [] : options}
+        listData={Number(style?.width) === 0 ? [] : options}
         onAddHandle={fieldPropertyEditable ? insertNewItem : undefined}
         setCurrentField={setCurrentField}
         existValues={cellValue}

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { NodeEntity } from 'node/entities/node.entity';
 import { NodeBaseInfo } from 'database/interfaces';
+import { NodeEntity } from 'node/entities/node.entity';
 import { INodeExtra } from 'shared/interfaces';
 import { EntityRepository, Repository } from 'typeorm';
 
@@ -26,29 +26,29 @@ export class NodeRepository extends Repository<NodeEntity> {
   /**
    * Obtain the number of nodes with the given node ID
    */
-  selectCountByNodeId(nodeId: string): Promise<number> {
-    return this.count({ where: { nodeId, isRubbish: false }});
+  public async selectCountByNodeId(nodeId: string): Promise<number> {
+    return await this.count({ where: { nodeId, isRubbish: false }});
   }
 
   /**
    * Obtain the number of templates with the given node ID
    */
-  selectTemplateCountByNodeId(nodeId: string): Promise<number> {
-    return this.count({ where: { nodeId, isTemplate: true, isRubbish: false }});
+  public async selectTemplateCountByNodeId(nodeId: string): Promise<number> {
+    return await this.count({ where: { nodeId, isTemplate: true, isRubbish: false }});
   }
 
   /**
    * Obtain the number of nodes with the given parent node ID
    */
-  selectCountByParentId(parentId: string): Promise<number> {
-    return this.count({ where: { parentId, isRubbish: false }});
+  public async selectCountByParentId(parentId: string): Promise<number> {
+    return await this.count({ where: { parentId, isRubbish: false }});
   }
 
   /**
    * Obtain the ID of the space which the given node belongs to
    */
-  selectSpaceIdByNodeId(nodeId: string): Promise<{ spaceId: string } | undefined> {
-    return this.createQueryBuilder('vn')
+  public async selectSpaceIdByNodeId(nodeId: string): Promise<{ spaceId: string } | undefined> {
+    return await this.createQueryBuilder('vn')
       .select('vn.space_id', 'spaceId')
       .where('vn.node_id = :nodeId', { nodeId })
       .andWhere('vn.is_rubbish = 0')
@@ -58,7 +58,8 @@ export class NodeRepository extends Repository<NodeEntity> {
   /**
    * Obtain the children node list of a given node
    */
-  async selectAllSubNodeIds(nodeId: string): Promise<string[]> {
+  public async selectAllSubNodeIds(nodeId: string): Promise<string[]> {
+    // todo(itou): replace dynamic sql
     const raws = await this.query(
       `
           WITH RECURSIVE sub_ids (node_id) AS
@@ -90,6 +91,7 @@ export class NodeRepository extends Repository<NodeEntity> {
    * Example: for a path of 3 nodes, the returned array is `[nodeId, parentId, grandparentId, great-grandparentId]`
    */
   async selectParentPathByNodeId(nodeId: string): Promise<string[]> {
+    // todo(itou): replace dynamic sql
     // Query the path with recursive SQL, the result set includes the given node.
     const raws = await this.query(
       `
@@ -116,24 +118,24 @@ export class NodeRepository extends Repository<NodeEntity> {
     }, []);
   }
 
-  getNodeInfo(nodeId: string): Promise<NodeEntity | undefined> {
-    return this.findOne({
+  public async getNodeInfo(nodeId: string): Promise<NodeEntity | undefined> {
+    return await this.findOne({
       select: ['nodeId', 'nodeName', 'spaceId', 'parentId', 'icon', 'extra', 'type'],
       where: [{ nodeId, isRubbish: false }],
     });
   }
 
-  selectExtraByNodeId(nodeId: string): Promise<{ extra: INodeExtra } | undefined> {
-    return this.createQueryBuilder('vn')
+  public async selectExtraByNodeId(nodeId: string): Promise<{ extra: INodeExtra } | undefined> {
+    return await this.createQueryBuilder('vn')
       .select('CONVERT(vn.extra, JSON) as extra')
       .where('vn.node_id = :nodeId', { nodeId })
       .andWhere('vn.is_rubbish = 0')
       .getRawOne();
   }
 
-  selectNodeNameAndIconByNodeId(nodeId: string): Promise<NodeBaseInfo | undefined> {
+  selectNodeBaseInfoByNodeId(nodeId: string): Promise<NodeBaseInfo | undefined> {
     return this.findOne({
-      select: ['nodeName', 'icon'],
+      select: ['nodeName', 'icon', 'parentId'],
       where: [{ nodeId, isRubbish: false }],
     }).then(result => {
       if (result) {
@@ -141,6 +143,7 @@ export class NodeRepository extends Repository<NodeEntity> {
           id: nodeId,
           nodeName: result.nodeName,
           icon: result.icon || '',
+          parentId: result.parentId
         };
       }
       return undefined;

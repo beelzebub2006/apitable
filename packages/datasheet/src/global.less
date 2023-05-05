@@ -66,8 +66,6 @@
         }
 
         svg {
-          width: 16px;
-          height: 16px;
           fill: var(--fourthLevelText);
           transform: rotate(0deg);
           transition: transform 500ms ease;
@@ -203,11 +201,10 @@
 }
 
 .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
-  font-weight: bold;
   color: var(--primaryColor);
 }
 
-a{
+a {
   color: var(--primaryColor);
   text-decoration: none;
   background-color: transparent;
@@ -235,11 +232,20 @@ a{
   }
 }
 
-.intercom-lightweight-app  {
-  z-index: 1000!important;
+.intercom-lightweight-app {
+  z-index: 1000 !important;
 }
 
 .intercom-app {
   position: relative;
-  z-index: 1000!important;
+  z-index: 1000 !important;
+}
+
+.form-control-password {
+  background: var(--fill0) !important;
+  border-color: transparent !important;
+
+  input {
+    caret-color: unset !important;
+  }
 }

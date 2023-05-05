@@ -17,8 +17,8 @@
  */
 
 import { AlarmUsersType, CellType, CollaCommandName, FieldType, KONVA_DATASHEET_ID, Selectors, Strings, t } from '@apitable/core';
-import { NotificationSmallOutlined } from '@apitable/icons';
-import { generateTargetName, getDayjs, IScrollState, PointPosition } from 'pc/components/gantt_view';
+import { NotificationOutlined } from '@apitable/icons';
+import { generateTargetName, IScrollState, PointPosition } from 'pc/components/gantt_view';
 import { Icon } from 'pc/components/konva_components';
 import { GridCoordinate, KonvaGridContext, KonvaGridViewContext } from 'pc/components/konva_grid';
 import { resourceService } from 'pc/resource_service';
@@ -35,10 +35,10 @@ interface IUseCellAlarmProps {
   columnStopIndex: number;
   scrollState: IScrollState;
   pointPosition: PointPosition;
-  toggleEditing: () => boolean | void;
+  toggleEditing: () => Promise<boolean | void>;
 }
 
-const NotificationSmallOutlinedPath = NotificationSmallOutlined.toString();
+const NotificationSmallOutlinedPath = NotificationOutlined.toString();
 
 export const useCellAlarm = (props: IUseCellAlarmProps) => {
   const {
@@ -49,7 +49,8 @@ export const useCellAlarm = (props: IUseCellAlarmProps) => {
     linearRows,
     visibleColumns,
     fieldMap,
-    snapshot
+    snapshot,
+    permissions,
   } = useContext(KonvaGridViewContext);
   const { setTooltipInfo, clearTooltipInfo, theme } = useContext(KonvaGridContext);
   const {
@@ -125,6 +126,7 @@ export const useCellAlarm = (props: IUseCellAlarmProps) => {
   const pointFieldId = visibleColumns[pointColumnIndex]?.fieldId;
   const pointField = fieldMap[pointFieldId];
   if (
+    permissions.editable &&
     AlarmIcon &&
     !isScrolling &&
     row?.type === CellType.Record &&
@@ -147,17 +149,17 @@ export const useCellAlarm = (props: IUseCellAlarmProps) => {
           })}
           data={NotificationSmallOutlinedPath}
           fill={theme.color.thirdLevelText}
-          onClick={() => {
+          onClick={async() => {
             clearTooltipInfo();
-            toggleEditing();
+            await toggleEditing();
             const user = state.user.info;
-            resourceService.instance!.commandManager!.execute({
+            resourceService.instance!.commandManager.execute({
               cmd: CollaCommandName.SetDateTimeCellAlarm,
               recordId: pointRecordId,
               fieldId: pointFieldId,
               alarm: {
                 subtract: '',
-                time: pointField.property.includeTime ? getDayjs(pointCellValue as number).format('HH:mm') : '09:00',
+                alarmAt: pointCellValue,
                 alarmUsers: [{
                   type: AlarmUsersType.Member,
                   data: user?.unitId!

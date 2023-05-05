@@ -17,21 +17,21 @@
  */
 
 import { Field, FieldType, IMeta, IRecord, IRecordMap, IReduxState } from '@apitable/core';
+import { Span } from '@metinseylan/nestjs-opentelemetry';
 import { Injectable } from '@nestjs/common';
 import { RecordCommentService } from './record.comment.service';
 import { get, isEmpty, keyBy, orderBy } from 'lodash';
 import { Store } from 'redux';
 import { RecordHistoryTypeEnum } from 'shared/enums/record.history.enum';
-import { In, SelectQueryBuilder } from 'typeorm';
 import { ChangesetBaseDto } from '../dtos/changeset.base.dto';
 import { CommentEmojiDto } from '../dtos/comment.emoji.dto';
 import { RecordHistoryDto } from '../dtos/record.history.dto';
-import { UnitBaseInfoDto } from '../../../unit/dtos/unit.base.info.dto';
-import { DatasheetRecordEntity } from '../entities/datasheet.record.entity';
-import { RecordMap } from '../../interfaces';
 import { DatasheetRecordRepository } from '../../datasheet/repositories/datasheet.record.repository';
 import { RecordHistoryQueryRo } from '../ros/record.history.query.ro';
 import { DatasheetChangesetService } from './datasheet.changeset.service';
+import { UnitInfoDto } from '../../../unit/dtos/unit.info.dto';
+import { DatasheetRecordEntity } from '../entities/datasheet.record.entity';
+import { In } from 'typeorm';
 
 @Injectable()
 export class DatasheetRecordService {
@@ -41,30 +41,8 @@ export class DatasheetRecordService {
     private readonly datasheetChangesetService: DatasheetChangesetService,
   ) {}
 
-  async insertBatch(entities: DatasheetRecordEntity[]) {
-    await this.recordRepo
-      .createQueryBuilder()
-      .insert()
-      .into(DatasheetRecordEntity)
-      .values(entities)
-      .execute();
-  }
-
-  async getByRecordIdsAndIsDeleted(dstId: string, recordIds: string[], isDeleted: boolean): Promise<string[]> {
-    const raw = await this.recordRepo
-      .createQueryBuilder()
-      .select('record_id', 'recordId')
-      .where('record_id IN(:...recordIds)', { recordIds })
-      .andWhere('dst_id = :dstId', { dstId })
-      .andWhere('is_deleted = :isDeleted', { isDeleted })
-      .getRawMany();
-    return raw.reduce<string[]>((pre, cur) => {
-      pre.push(cur.recordId);
-      return pre;
-    }, []);
-  }
-
-  async getRecordsByDstId(dstId: string): Promise<RecordMap> {
+  @Span()
+  async getRecordsByDstId(dstId: string): Promise<IRecordMap> {
     const records = await this.recordRepo.find({
       select: ['recordId', 'data', 'revisionHistory', 'createdAt', 'updatedAt', 'recordMeta'],
       where: { dstId, isDeleted: false },
@@ -73,7 +51,8 @@ export class DatasheetRecordService {
     return this.formatRecordMap(records, commentCountMap);
   }
 
-  async getRecordsByDstIdAndRecordIds(dstId: string, recordIds: string[], isDeleted = false): Promise<RecordMap> {
+  @Span()
+  async getRecordsByDstIdAndRecordIds(dstId: string, recordIds: string[], isDeleted = false): Promise<IRecordMap> {
     const records = await this.recordRepo.find({
       select: ['recordId', 'data', 'revisionHistory', 'createdAt', 'updatedAt', 'recordMeta'],
       where: { recordId: In(recordIds), dstId, isDeleted },
@@ -82,56 +61,21 @@ export class DatasheetRecordService {
     return this.formatRecordMap(records, commentCountMap, recordIds);
   }
 
-  async getRelatedRecordCells(datasheetId: string, recordIds: string[], fieldKeyNames: string[], isDeleted = false): Promise<RecordMap> {
-    const raw = await this.getSelectQueryBuilder(datasheetId, recordIds, fieldKeyNames, isDeleted).getRawMany();
-    const records = raw.reduce<any[]>((pre, cur) => {
-      const data = {};
-      for (const fieldKeyName of fieldKeyNames) {
-        data[fieldKeyName] = cur[fieldKeyName];
-      }
-      const record = { recordId: cur.recordId, data, recordMeta: { fieldUpdatedMap: cur.fieldUpdatedMap }};
-      pre.push(record);
-      return pre;
-    }, []);
-    return this.formatRecordMapWithRelatedCellsOnly(records);
+  @Span()
+  async getBasicRecordsByRecordIds(dstId: string, recordIds: string[], isDeleted = false): Promise<IRecordMap> {
+    const records = await this.recordRepo.find({
+      select: ['recordId', 'data', 'createdAt', 'updatedAt', 'recordMeta'],
+      where: { recordId: In(recordIds), dstId, isDeleted },
+    });
+    return this.formatRecordMap(records, {}, recordIds);
   }
 
-  private getSelectQueryBuilder(
-    datasheetId: string,
-    recordIds: string[],
-    fieldKeyNames: string[],
-    isDeleted = false,
-  ): SelectQueryBuilder<DatasheetRecordEntity> {
-    const selectQueryBuilder = this.recordRepo.createQueryBuilder().select('record_id', 'recordId');
-    for (const fieldKeyName of fieldKeyNames) {
-      const jsonExtractFieldKeyName = `JSON_EXTRACT(data, '$.${fieldKeyName}')`;
-      selectQueryBuilder.addSelect(jsonExtractFieldKeyName, fieldKeyName);
-    }
-    selectQueryBuilder.addSelect("JSON_EXTRACT(field_updated_info, '$.fieldUpdatedMap')", 'fieldUpdatedMap');
-    selectQueryBuilder
-      .where('record_id IN(:...recordIds)', { recordIds })
-      .andWhere('dst_id = :datasheetId', { datasheetId })
-      .andWhere('is_deleted = :isDeleted', { isDeleted });
-    return selectQueryBuilder;
-  }
-
-  private formatRecordMapWithRelatedCellsOnly(records: DatasheetRecordEntity[]) {
-    return records.reduce<RecordMap>((pre, cur) => {
-      pre[cur.recordId!] = {
-        id: cur.recordId!,
-        data: cur.data || {},
-        recordMeta: cur.recordMeta,
-        commentCount: undefined as any,
-      };
-      return pre;
-    }, {});
-  }
-
-  private formatRecordMap(records: DatasheetRecordEntity[], commentCountMap: { [key: string]: number }, recordIds?: string[]): RecordMap {
+  @Span()
+  private formatRecordMap(records: DatasheetRecordEntity[], commentCountMap: { [key: string]: number }, recordIds?: string[]): IRecordMap {
     if (recordIds) {
       // recordMap follows the order of 'records'
       const recordMap = keyBy(records, 'recordId');
-      return recordIds.reduce<RecordMap>((pre, cur) => {
+      return recordIds.reduce<IRecordMap>((pre, cur) => {
         const record = recordMap[cur];
         if (record) {
           pre[cur] = {
@@ -147,7 +91,7 @@ export class DatasheetRecordService {
         return pre;
       }, {});
     }
-    return records.reduce<RecordMap>((pre, cur) => {
+    return records.reduce<IRecordMap>((pre, cur) => {
       if (!cur.recordId) {
         return pre;
       }
@@ -207,7 +151,7 @@ export class DatasheetRecordService {
     fieldIds: string[],
   ): Promise<RecordHistoryDto | null> {
     let changesets: ChangesetBaseDto[] = [];
-    const units: UnitBaseInfoDto[] = [];
+    const units: UnitInfoDto[] = [];
     let emojis: CommentEmojiDto = {};
     const revisions = await this.getRecordRevisionHistoryAsc(dstId, recordId, query.type, showRecordHistory, query.limitDays);
     const maxRevisionIndex =
@@ -297,7 +241,7 @@ export class DatasheetRecordService {
    * @author Zoe Zheng
    * @date 2021/4/12 11:48 AM
    */
-  async getRecordRevisionHistoryAsc(
+  private async getRecordRevisionHistoryAsc(
     dstId: string,
     recordId: string,
     type: RecordHistoryTypeEnum,

@@ -16,20 +16,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { IMeta } from '@apitable/core';
+import type { IMeta } from '@apitable/core';
 import { Body, Controller, Delete, Get, Headers, Param, Post, Query, UseInterceptors } from '@nestjs/common';
 import { UserService } from 'user/services/user.service';
 import { DatasheetException, PermissionException, ServerException } from 'shared/exception';
 import { ResourceDataInterceptor } from 'database/resource/middleware/resource.data.interceptor';
-import { CommentReplyDto } from '../dtos/comment.reply.dto';
+import type { CommentReplyDto } from '../dtos/comment.reply.dto';
 import { DatasheetRecordSubscriptionBaseService } from 'database/subscription/datasheet.record.subscription.base.service';
-import { DatasheetPack, RecordsMapView, UserInfo, ViewPack } from '../../interfaces';
-import { DatasheetPackRo } from '../ros/datasheet.pack.ro';
+import type { DatasheetPack, RecordsMapView, UserInfo, ViewPack } from '../../interfaces';
+import type { DatasheetPackRo } from '../ros/datasheet.pack.ro';
 import { NodeService } from 'node/services/node.service';
 import { NodeShareSettingService } from 'node/services/node.share.setting.service';
 import { DatasheetMetaService } from '../services/datasheet.meta.service';
 import { DatasheetRecordService } from '../services/datasheet.record.service';
 import { DatasheetService } from '../services/datasheet.service';
+import { MetaService } from 'database/resource/services/meta.service';
+import type { DatasheetPackResponse } from '@apitable/room-native-api';
 
 /**
  * Datasheet APIs
@@ -44,29 +46,36 @@ export class DatasheetController {
     private readonly datasheetMetaService: DatasheetMetaService,
     private readonly datasheetRecordService: DatasheetRecordService,
     private readonly datasheetRecordSubscriptionService: DatasheetRecordSubscriptionBaseService,
+    private readonly resourceMetaService: MetaService,
   ) {}
 
   @Get(['datasheets/:dstId/dataPack', 'datasheet/:dstId/dataPack'])
   @UseInterceptors(ResourceDataInterceptor)
-  async getDataPack(@Headers('cookie') cookie: string, @Param('dstId') dstId: string, @Query() query: DatasheetPackRo,): Promise<DatasheetPack> {
+  async getDataPack(
+    @Headers('cookie') cookie: string,
+    @Param('dstId') dstId: string,
+    @Query() query: DatasheetPackRo,
+  ): Promise<DatasheetPackResponse | DatasheetPack> {
     // check if the user belongs to this space
     const { userId } = await this.userService.getMe({ cookie });
     await this.nodeService.checkUserForNode(userId, dstId);
-    return await this.datasheetService.fetchDataPack(dstId, { cookie }, { recordIds: query.recordIds });
+    return this.datasheetService.fetchDataPack(dstId, { cookie }, true, { recordIds: query.recordIds });
   }
 
   @Get(['shares/:shareId/datasheets/:dstId/dataPack', 'share/:shareId/datasheet/:dstId/dataPack'])
   @UseInterceptors(ResourceDataInterceptor)
   async getShareDataPack(
-    @Headers('cookie') cookie: string, @Param('shareId') shareId: string, @Param('dstId') dstId: string
-  ): Promise<DatasheetPack> {
+    @Headers('cookie') cookie: string,
+    @Param('shareId') shareId: string,
+    @Param('dstId') dstId: string,
+  ): Promise<DatasheetPack | DatasheetPackResponse> {
     // check if the node has been shared
     await this.nodeShareSettingService.checkNodeHasOpenShare(shareId, dstId);
-    return await this.datasheetService.fetchShareDataPack(shareId, dstId, { cookie });
+    return await this.datasheetService.fetchShareDataPack(shareId, dstId, { cookie }, true);
   }
 
   @Get(['templates/datasheets/:dstId/dataPack', 'template/datasheet/:dstId/dataPack'])
-  async getTemplateDataPack(@Headers('cookie') cookie: string, @Param('dstId') dstId: string): Promise<DatasheetPack> {
+  async getTemplateDataPack(@Headers('cookie') cookie: string, @Param('dstId') dstId: string): Promise<DatasheetPack | DatasheetPackResponse> {
     const isTemplate = await this.nodeService.isTemplate(dstId);
     if (!isTemplate) {
       throw new ServerException(PermissionException.ACCESS_DENIED);
@@ -90,7 +99,7 @@ export class DatasheetController {
   // TODO: use HTTP Get method instead, the number of recordIds should be limited
   @Post(['datasheets/:dstId/records', 'datasheet/:dstId/records'])
   async getRecords(@Param('dstId') dstId: string, @Body() recordIds: string[]): Promise<RecordsMapView> {
-    const revision = await this.nodeService.getRevisionByDstId(dstId);
+    const revision = await this.resourceMetaService.getRevisionByDstId(dstId);
     // revision not found error
     if (revision == null) {
       throw new ServerException(DatasheetException.VERSION_ERROR);
@@ -100,8 +109,7 @@ export class DatasheetController {
   }
 
   @Get(['datasheets/:dstId/views/:viewId/dataPack', 'datasheet/:dstId/view/:viewId/dataPack'])
-  async getViewPack(@Headers('cookie') cookie: string,
-                    @Param('dstId') dstId: string, @Param('viewId') viewId: string): Promise<ViewPack> {
+  async getViewPack(@Headers('cookie') cookie: string, @Param('dstId') dstId: string, @Param('viewId') viewId: string): Promise<ViewPack> {
     // check if the user belongs to this space
     const { userId } = await this.userService.getMe({ cookie });
     await this.nodeService.checkUserForNode(userId, dstId);
@@ -111,8 +119,7 @@ export class DatasheetController {
   }
 
   @Get(['shares/:shareId/datasheets/:dstId/views/:viewId/dataPack', 'share/:shareId/datasheet/:dstId/view/:viewId/dataPack'])
-  async getShareViewPack(@Param('shareId') shareId: string,
-                         @Param('dstId') dstId: string, @Param('viewId') viewId: string): Promise<ViewPack> {
+  async getShareViewPack(@Param('shareId') shareId: string, @Param('dstId') dstId: string, @Param('viewId') viewId: string): Promise<ViewPack> {
     // check if the node has been shared
     await this.nodeShareSettingService.checkNodeHasOpenShare(shareId, dstId);
     return await this.datasheetService.fetchViewPack(dstId, viewId);
@@ -123,7 +130,7 @@ export class DatasheetController {
     @Headers('cookie') cookie: string,
     @Param('dstId') dstId: string,
     @Param('recordId') recordId: string,
-    @Query('commentIds') commentIds: string
+    @Query('commentIds') commentIds: string,
   ): Promise<CommentReplyDto> {
     const { userId } = await this.userService.getMe({ cookie });
     await this.nodeService.checkUserForNode(userId, dstId);

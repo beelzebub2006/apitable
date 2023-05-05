@@ -31,9 +31,10 @@ import { ApiResponse } from 'fusion/vos/api.response';
 import { RecordHistoryTypeEnum } from 'shared/enums/record.history.enum';
 import { PermissionException, ServerException } from 'shared/exception';
 import { ResourceDataInterceptor } from 'database/resource/middleware/resource.data.interceptor';
-import { ChangesetView, DatasheetPack } from '../../interfaces';
-import { RecordHistoryQueryRo } from '../../datasheet/ros/record.history.query.ro';
-import { RecordHistoryVo } from '../vos/record.history.vo';
+import type { ChangesetView, DatasheetPack } from '../../interfaces';
+import type { RecordHistoryQueryRo } from '../../datasheet/ros/record.history.query.ro';
+import type { RecordHistoryVo } from '../vos/record.history.vo';
+import type { DatasheetPackResponse } from '@apitable/room-native-api';
 
 @Controller('nest/v1')
 export class ResourceController {
@@ -49,11 +50,12 @@ export class ResourceController {
     private readonly otService: OtService,
   ) {}
 
-  // TODO: deprecate revisions parameter
+  // TODO(Chambers): deprecate revisions parameter
   @Get(['resources/:resourceId/changesets', 'resource/:resourceId/changesets'])
   async getChangesetList(
-    @Headers('cookie') cookie: string, @Param('resourceId') resourceId: string,
-    @Query() query: { sourceId: string, revisions: string | number[]; resourceType: ResourceType; startRevision: number; endRevision: number },
+    @Headers('cookie') cookie: string,
+    @Param('resourceId') resourceId: string,
+    @Query() query: { sourceId: string; resourceType: ResourceType; startRevision: number; endRevision: number },
   ): Promise<ChangesetView[]> {
     // check if the user belongs to this space
     const { userId } = await this.userService.getMe({ cookie });
@@ -61,22 +63,21 @@ export class ResourceController {
     // check the user has the privileges of the node
     await this.nodeService.checkNodePermission(query.sourceId || resourceId, { cookie });
     await this.resourceService.checkResourceEntry(resourceId, query.resourceType, query.sourceId);
-    if (query.revisions?.length > 0) {
-      return await this.changesetService.getChangesetList(
-        resourceId,
-        Number(query.resourceType),
-        +query.revisions[0]!,
-        +query.revisions[query.revisions.length - 1]!
-      );
+    if (query.endRevision - query.startRevision > 100) {
+      throw new ServerException(PermissionException.OPERATION_DENIED);
     }
     return await this.changesetService.getChangesetList(resourceId, Number(query.resourceType), query.startRevision, query.endRevision);
   }
 
   @Get('shares/:shareId/resources/:resourceId/changesets')
   async getShareChangesetList(
-    @Param('shareId') shareId: string, @Param('resourceId') resourceId: string,
-    @Query() query: { sourceId: string, resourceType: ResourceType; startRevision: number; endRevision: number },
+    @Param('shareId') shareId: string,
+    @Param('resourceId') resourceId: string,
+    @Query() query: { sourceId: string; resourceType: ResourceType; startRevision: number; endRevision: number },
   ): Promise<ChangesetView[]> {
+    if (query.endRevision - query.startRevision > 100) {
+      throw new ServerException(PermissionException.OPERATION_DENIED);
+    }
     await this.nodeShareSettingService.checkNodeHasOpenShare(shareId, query.sourceId || resourceId);
     await this.resourceService.checkResourceEntry(resourceId, query.resourceType, query.sourceId);
     // Share limit can only load the most recent 100 versions
@@ -89,35 +90,45 @@ export class ResourceController {
 
   @Get(['resources/:resourceId/foreignDatasheets/:foreignDatasheetId/dataPack', 'resource/:resourceId/foreignDatasheet/:foreignDatasheetId/dataPack'])
   @UseInterceptors(ResourceDataInterceptor)
-  async getFormForeignDatasheetPack(
-    @Headers('cookie') cookie: string, @Param('resourceId') resourceId: string, @Param('foreignDatasheetId') foreignDatasheetId: string
-  ): Promise<DatasheetPack> {
+  async getForeignDatasheetPack(
+    @Headers('cookie') cookie: string,
+    @Param('resourceId') resourceId: string,
+    @Param('foreignDatasheetId') foreignDatasheetId: string,
+  ): Promise<DatasheetPack | DatasheetPackResponse> {
     // check if the user belongs to this space
     const { userId } = await this.userService.getMe({ cookie });
     await this.nodeService.checkUserForNode(userId, resourceId);
     // check the user has the privileges of the node
     await this.nodeService.checkNodePermission(resourceId, { cookie });
-    return await this.resourceService.fetchForeignDatasheetPack(resourceId, foreignDatasheetId, { cookie });
+    return await this.resourceService.fetchForeignDatasheetPack(resourceId, foreignDatasheetId, { cookie }, true);
   }
 
-  @Get(['shares/:shareId/resources/:resourceId/foreignDatasheets/:foreignDatasheetId/dataPack',
-    'share/:shareId/resource/:resourceId/foreignDatasheet/:foreignDatasheetId/dataPack'])
+  @Get([
+    'shares/:shareId/resources/:resourceId/foreignDatasheets/:foreignDatasheetId/dataPack',
+    'share/:shareId/resource/:resourceId/foreignDatasheet/:foreignDatasheetId/dataPack',
+  ])
   @UseInterceptors(ResourceDataInterceptor)
-  async getShareFormForeignDatasheetPack(
-    @Headers('cookie') cookie: string, @Param('resourceId') resourceId: string,
-    @Param('foreignDatasheetId') foreignDatasheetId: string, @Param('shareId') shareId: string
-  ): Promise<DatasheetPack> {
+  async getShareForeignDatasheetPack(
+    @Headers('cookie') cookie: string,
+    @Param('resourceId') resourceId: string,
+    @Param('foreignDatasheetId') foreignDatasheetId: string,
+    @Param('shareId') shareId: string,
+  ): Promise<DatasheetPack | DatasheetPackResponse> {
     // check if the share link of the node is editable
     await this.nodeShareSettingService.checkNodeShareCanBeEdited(shareId, resourceId);
-    return await this.resourceService.fetchForeignDatasheetPack(resourceId, foreignDatasheetId, { cookie }, shareId);
+    return await this.resourceService.fetchForeignDatasheetPack(resourceId, foreignDatasheetId, { cookie }, true, shareId);
   }
 
   /**
    * get comments and history of the record
    */
   @Get('resources/:resourceId/records/:recId/activity')
-  public async getActivity(@Headers('cookie') cookie: string, @Param('resourceId') resourceId: string,
-                           @Param('recId') recId: string, @Query() query: RecordHistoryQueryRo): Promise<RecordHistoryVo> {
+  public async getActivity(
+    @Headers('cookie') cookie: string,
+    @Param('resourceId') resourceId: string,
+    @Param('recId') recId: string,
+    @Query() query: RecordHistoryQueryRo,
+  ): Promise<RecordHistoryVo> {
     // get permissions
     const permission = await this.nodePermissionService.getNodePermission(resourceId, { cookie }, { main: true, internal: true });
     // filter fields by permissions
@@ -131,8 +142,7 @@ export class ResourceController {
       }
     }
     // eliminate auto-increment and no permissions fields
-    const dstId = resourceId.startsWith(ResourceIdPrefix.Datasheet) ? resourceId :
-      await this.nodeService.getMainNodeId(resourceId);
+    const dstId = resourceId.startsWith(ResourceIdPrefix.Datasheet) ? resourceId : await this.nodeService.getMainNodeId(resourceId);
     const fieldIds = await this.datasheetMetaService.getFieldIdByDstId(dstId, filterFiledIds, readonlyFields);
     const spaceId = await this.nodeService.getSpaceIdByNodeId(dstId);
     const showRecordHistory: boolean = await this.nodeService.showRecordHistory(dstId, query.type == RecordHistoryTypeEnum.MODIFY_HISTORY);
@@ -143,10 +153,11 @@ export class ResourceController {
   @Post(['resource/apply/changesets', 'resources/apply/changesets'])
   async applyChangesets(
     @Headers('cookie') cookie: string,
-    @Body() data: {
+    @Body()
+      data: {
       changesets: ILocalChangeset[];
       roomId: string;
-    }
+    },
   ) {
     const { roomId, changesets } = data;
     let result;
@@ -161,6 +172,4 @@ export class ResourceController {
 
     return result;
   }
-
 }
-

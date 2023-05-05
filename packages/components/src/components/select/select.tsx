@@ -21,6 +21,7 @@ import { useClickAway, useToggle } from 'ahooks';
 import Color from 'color';
 import { SelectItem } from 'components/select/select_item';
 import { convertChildrenToData } from 'components/select/utils';
+import { WrapperTooltip } from 'components/tooltip';
 import { IUseListenTriggerInfo, stopPropagation } from 'helper';
 import { useProviderTheme } from 'hooks';
 import Trigger from 'rc-trigger';
@@ -32,18 +33,23 @@ import { IOption, ISelectProps } from './interface';
 import {
   GlobalStyle, hightLightCls, OptionOutside, StyledArrowIcon, StyledListContainer, StyledSelectedContainer, StyledSelectTrigger
 } from './styled';
+import debounce from 'lodash/debounce';
 
 const _renderValue = (option: IOption) => {
   return option.label;
 };
 
-export const Select: FC<ISelectProps> & {
-  Option: React.FC<Omit<IListItemProps, 'wrapperComponent'> & Pick<IOption, 'value' | 'prefixIcon' | 'suffixIcon'>>
+const _Highlighter: any = Highlighter;
+const _GlobalStyle: any = GlobalStyle;
+
+export const Select: FC<React.PropsWithChildren<ISelectProps>> & {
+  Option: React.FC<React.PropsWithChildren<Omit<IListItemProps, 'wrapperComponent'> & Pick<IOption, 'value' | 'prefixIcon' | 'suffixIcon'>>>
 } = (props) => {
   const {
     placeholder, value, triggerStyle, triggerCls, options: _options, prefixIcon, suffixIcon, dropdownMatchSelectWidth = true,
     openSearch = false, searchPlaceholder, highlightStyle, noDataTip, defaultVisible, hiddenArrow = false, triggerLabel,
-    onSelected, hideSelectedOption, dropdownRender, disabled, listStyle, listCls, renderValue = _renderValue, children, maxListWidth = 240
+    onSelected, hideSelectedOption, dropdownRender, disabled, disabledTip, listStyle, listCls, renderValue = _renderValue, children, maxListWidth = 240,
+    popupStyle = {}
   } = props;
   const [isInit, setIsInit] = useState(true);
   const theme = useProviderTheme();
@@ -59,8 +65,10 @@ export const Select: FC<ISelectProps> & {
   const OFFSET = [0, 4];
   const selectedOption = options.filter(item => Boolean(item)).find(item => item!.value === value);
 
+  const setKeywordDebounce = debounce(setKeyword, 300);
+
   const inputOnChange = (_e: React.ChangeEvent, keyword: string) => {
-    setKeyword(keyword);
+    setKeywordDebounce(keyword);
   };
 
   useEffect(() => {
@@ -93,12 +101,12 @@ export const Select: FC<ISelectProps> & {
     return <OptionOutside
       currentIndex={index}
       id={item.value as string}
-      key={item.value as string}
+      key={`${item.value as string}-${index}`}
       {...item}
     >
       <SelectItem item={item} renderValue={_renderValue} isChecked={value === item.value}>
         {
-          !keyword ? null : <Highlighter
+          !keyword ? null : <_Highlighter
             highlightClassName={hightLightCls.toString()}
             highlightStyle={highlightStyle as any}
             searchWords={[keyword]}
@@ -180,7 +188,7 @@ export const Select: FC<ISelectProps> & {
   };
 
   return <>
-    <GlobalStyle />
+    <_GlobalStyle />
     <Trigger
       // getPopupContainer={() => containerRef.current!}
       popup={renderOptionList}
@@ -191,48 +199,53 @@ export const Select: FC<ISelectProps> & {
       popupStyle={{
         width: 'max-content',
         position: 'absolute',
-        zIndex: 1000, // Same level as antd modal
+        zIndex: 1200, // Same level as antd modal
+        ...popupStyle,
       }}
       ref={triggerRef}
       popupVisible={visible}
     >
-      <StyledSelectTrigger
-        onClick={triggerClick}
-        style={triggerStyle}
-        className={triggerCls}
-        tabIndex={-1}
-        ref={containerRef}
-        disabled={Boolean(disabled)}
-        focus={visible}
-        data-name="select"
-      >
-        <StyledSelectedContainer
-          className={'ellipsis'}
-          {...selectedOption}
-          disabled={Boolean(disabled || (selectedOption && selectedOption.disabled))}
-          suffixIcon={suffixIcon || selectedOption?.suffixIcon}
-          prefixIcon={prefixIcon || selectedOption?.prefixIcon}
+      <WrapperTooltip wrapper={Boolean(disabledTip && disabled)} tip={disabledTip as string}>
+        <StyledSelectTrigger
+          onClick={triggerClick}
+          style={triggerStyle}
+          className={triggerCls}
+          tabIndex={-1}
+          ref={containerRef}
+          disabled={Boolean(disabled)}
+          focus={visible}
+          data-name='select'
         >
-          {triggerLabel}
-          {!triggerLabel && (
-            value != null && selectedOption ? <SelectItem
-              item={{
-                ...selectedOption,
-                suffixIcon: suffixIcon || selectedOption.suffixIcon,
-                prefixIcon: prefixIcon || selectedOption.prefixIcon,
-              }}
-              renderValue={renderValue}
-            /> :
-              <span className={'placeholder ellipsis'}>
-                {placeholder || 'please select option'}
-              </span>
-          )
+          <StyledSelectedContainer
+            className={'ellipsis'}
+            {...selectedOption}
+            disabled={Boolean(disabled || (selectedOption && selectedOption.disabled))}
+            suffixIcon={suffixIcon || selectedOption?.suffixIcon}
+            prefixIcon={prefixIcon || selectedOption?.prefixIcon}
+          >
+            {triggerLabel}
+            {!triggerLabel && (
+              value != null && selectedOption ? <SelectItem
+                item={{
+                  ...selectedOption,
+                  suffixIcon: suffixIcon || selectedOption.suffixIcon,
+                  prefixIcon: prefixIcon || selectedOption.prefixIcon,
+                }}
+                renderValue={renderValue}
+              /> :
+                <span className={'placeholder ellipsis'}>
+                  {placeholder || 'please select option'}
+                </span>
+            )
+            }
+          </StyledSelectedContainer>
+          {
+            !hiddenArrow && <StyledArrowIcon rotated={visible}>
+              <ChevronDownOutlined color={disabled ? Color(theme.color.black[500]).alpha(0.5).hsl().string() : theme.color.black[500]} />
+            </StyledArrowIcon>
           }
-        </StyledSelectedContainer>
-        {!hiddenArrow && <StyledArrowIcon rotated={visible}>
-          <ChevronDownOutlined color={disabled ? Color(theme.color.black[500]).alpha(0.5).hsl().string() : theme.color.black[500]} />
-        </StyledArrowIcon>}
-      </StyledSelectTrigger>
+        </StyledSelectTrigger>
+      </WrapperTooltip>
     </Trigger>
   </>;
 };

@@ -18,16 +18,19 @@
 
 import { Typography } from '@apitable/components';
 import {
-  Api, ConfigConstant, getImageThumbSrc, integrateCdnHost, IReduxState, Navigation, Settings, Strings, t, TEMPLATE_CENTER_ID,
+  Api, api, ConfigConstant, getImageThumbSrc, integrateCdnHost, IReduxState, Navigation, Settings, Strings, t, TEMPLATE_CENTER_ID,
 } from '@apitable/core';
-import { ITemplateRecommendResponse } from '@apitable/core/dist/modules/shared/api/api.interface';
+import { useRequest } from 'ahooks';
 import { Col, Row } from 'antd';
-import { TemplateRecommendContext } from 'context/template_recommend';
+// @ts-ignore
+import { isDingtalkFunc } from 'enterprise';
 import { take, takeRight } from 'lodash';
+import { Method } from 'pc/components/route_manager/const';
 import { navigationToUrl } from 'pc/components/route_manager/navigation_to_url';
 import { Router } from 'pc/components/route_manager/router';
+import { useTemplateRequest } from 'pc/hooks';
 import { getEnvVariables, isMobileApp } from 'pc/utils/env';
-import React, { FC, useContext, useEffect, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Carousel } from 'react-responsive-carousel';
 import 'react-responsive-carousel/lib/styles/carousel.min.css';
@@ -45,12 +48,13 @@ export const imgUrl = (token: string, imageHeight: number) => {
   return getImageThumbSrc(token, { h: Math.ceil(imageHeight * 2), quality: 90 });
 };
 
-export const TemplateChoice: FC<ITemplateChoiceProps> = props => {
+export const TemplateChoice: FC<React.PropsWithChildren<ITemplateChoiceProps>> = props => {
   const { setUsingTemplate } = props;
-  const [_templateRecommendData, setTemplateRecommendData] = useState<ITemplateRecommendResponse>();
+  const [_templateRecommendData, setTemplateRecommendData] = useState<api.ITemplateRecommendResponse>();
   const categoryId = useSelector((state: IReduxState) => state.pageParams.categoryId);
   const spaceId = useSelector((state: IReduxState) => state.space.activeId);
-  const { recommendData: templateRecommendData } = useContext(TemplateRecommendContext);
+  const { templateRecommendReq } = useTemplateRequest();
+  const { data: templateRecommendData } = useRequest(templateRecommendReq);
   const env = getEnvVariables();
 
   useEffect(() => {
@@ -66,7 +70,7 @@ export const TemplateChoice: FC<ITemplateChoiceProps> = props => {
     });
   }, [templateRecommendData]);
 
-  const openTemplateDetail = ({ templateId }) => {
+  const openTemplateDetail = ({ templateId }: { templateId: string }) => {
     Router.push(Navigation.TEMPLATE, {
       params: {
         spaceId,
@@ -75,7 +79,7 @@ export const TemplateChoice: FC<ITemplateChoiceProps> = props => {
       },
     });
   };
-  const openTemplateAlbumDetail = ({ templateId }) => {
+  const openTemplateAlbumDetail = ({ templateId }: { templateId: string }) => {
     Router.push(Navigation.TEMPLATE, {
       params: {
         spaceId,
@@ -96,7 +100,7 @@ export const TemplateChoice: FC<ITemplateChoiceProps> = props => {
     <div className={styles.templateChoiceWrapper}>
       <Row className={styles.templateChoice}>
         <Col span={24}>
-          {_templateRecommendData.top &&
+          {_templateRecommendData.top && (
             <>
               <div className={styles.topBannerWrapper} id={TEMPLATE_CENTER_ID.TOP_HOT_BANNER}>
                 {carouselItems.length === 1 ? (
@@ -113,14 +117,7 @@ export const TemplateChoice: FC<ITemplateChoiceProps> = props => {
                     usingTemplate={setUsingTemplate}
                   />
                 ) : (
-                  <Carousel
-                    showThumbs={false}
-                    showArrows={false}
-                    showStatus={false}
-                    autoPlay
-                    infiniteLoop
-                    swipeable
-                  >
+                  <Carousel showThumbs={false} showArrows={false} showStatus={false} autoPlay infiniteLoop swipeable>
                     {carouselItems.map(topItem => (
                       <TemplateItem
                         templateId={topItem.templateId}
@@ -140,27 +137,25 @@ export const TemplateChoice: FC<ITemplateChoiceProps> = props => {
                 )}
               </div>
               <div className={styles.recommendWrapper}>
-                {
-                  takeRight(_templateRecommendData.top, 2).map(template => (
-                    <div className={styles.recommendItem} key={template.image}>
-                      <TemplateItem
-                        height={160}
-                        templateId={template.templateId}
-                        img={imgUrl(template.image, 160)}
-                        onClick={openTemplateDetail}
-                        bannerDesc={{
-                          title: template.title,
-                          desc: template.desc,
-                        }}
-                        bannerType={ConfigConstant.BannerType.MIDDLE}
-                        usingTemplate={setUsingTemplate}
-                      />
-                    </div>
-                  ))
-                }
+                {takeRight(_templateRecommendData.top, 2).map(template => (
+                  <div className={styles.recommendItem} key={template.image}>
+                    <TemplateItem
+                      height={160}
+                      templateId={template.templateId}
+                      img={imgUrl(template.image, 160)}
+                      onClick={openTemplateDetail}
+                      bannerDesc={{
+                        title: template.title,
+                        desc: template.desc,
+                      }}
+                      bannerType={ConfigConstant.BannerType.MIDDLE}
+                      usingTemplate={setUsingTemplate}
+                    />
+                  </div>
+                ))}
               </div>
             </>
-          }
+          )}
           {_templateRecommendData.albumGroups?.map(albumGroup => (
             <Row key={albumGroup.name}>
               <Col span={24} className={styles.category}>
@@ -189,8 +184,8 @@ export const TemplateChoice: FC<ITemplateChoiceProps> = props => {
               </Col>
             </Row>
           ))}
-          {
-            _templateRecommendData.templateGroups && _templateRecommendData.templateGroups.map(category => (
+          {_templateRecommendData.templateGroups &&
+            _templateRecommendData.templateGroups.map(category => (
               <Row key={category.name}>
                 <Col span={24} className={styles.category}>
                   <Row className={styles.categoryName}>
@@ -218,18 +213,18 @@ export const TemplateChoice: FC<ITemplateChoiceProps> = props => {
                   </div>
                 </Col>
               </Row>
-            ))
-          }
+            ))}
         </Col>
       </Row>
-      {
-        env.TEMPLATE_FEEDBACK_FORM_URL && !isMobileApp() &&
+      {env.TEMPLATE_FEEDBACK_FORM_URL && !isMobileApp() && (
         <Typography className={styles.notFoundTip} variant='body2' align='center'>
-          <span className={styles.text} onClick={() => navigationToUrl(`${env.TEMPLATE_FEEDBACK_FORM_URL}`)}>
+          <span className={styles.text} onClick={() => navigationToUrl(`${env.TEMPLATE_FEEDBACK_FORM_URL}`, {
+            method: isDingtalkFunc?.() ? Method.Push : Method.NewTab
+          })}>
             {t(Strings.template_not_found)}
           </span>
         </Typography>
-      }
+      )}
     </div>
   );
 };

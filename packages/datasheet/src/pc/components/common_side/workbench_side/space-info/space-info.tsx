@@ -26,7 +26,7 @@ import { shallowEqual, useSelector } from 'react-redux';
 import { SpaceInfoPopover } from './space-info-popover';
 import styles from './style.module.less';
 
-const Content: FC = () => {
+const Content: FC<React.PropsWithChildren<unknown>> = () => {
   const subscription = useSelector(state => state.billing?.subscription, shallowEqual);
   const level = (subscription ? subscription.product.toLowerCase() : LevelType.Bronze) as ISpaceLevelType;
   const {
@@ -35,19 +35,19 @@ const Content: FC = () => {
 
   return (
     <>
-      <OrganizationHead className={styles.spaceName} hideTooltip />
       <div className={styles.logo}>{logo}</div>
+      <OrganizationHead className={styles.spaceName} hideTooltip />
     </>
   );
 };
 
-export const SpaceInfo: FC = () => {
+export const SpaceInfo: FC<React.PropsWithChildren<unknown>> = () => {
   return (
     <>
       <ComponentDisplay minWidthCompatible={ScreenSize.md}>
         <Popover
-          trigger="hover"
-          placement="bottomLeft"
+          trigger='hover'
+          placement='bottomLeft'
           align={{
             offset: [10, 0],
           }}

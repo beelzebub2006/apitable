@@ -16,16 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import { IOption, Select, useThemeColors, WrapperTooltip } from '@apitable/components';
 import { Field, IViewColumn, Selectors, Strings, t } from '@apitable/core';
 import classNames from 'classnames';
+import { FieldPermissionLock } from 'pc/components/field_permission';
 import { getFieldTypeIcon } from 'pc/components/multi_grid/field_setting';
 import { renderComputeFieldError } from 'pc/components/multi_grid/header';
-import { useMemo, useState, memo } from 'react';
+import { useShowViewLockModal } from 'pc/components/view_lock/use_show_view_lock_modal';
 import * as React from 'react';
+import { memo, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import styles from './style.module.less';
-import { IOption, Select, WrapperTooltip, useThemeColors } from '@apitable/components';
-import { FieldPermissionLock } from 'pc/components/field_permission';
 
 interface IViewFieldOptions {
   defaultFieldId: string;
@@ -39,7 +40,7 @@ interface IViewFieldOptions {
   isAddNewOption?: boolean; // Whether the operation of the current option is to add a new option.
 }
 
-export const ViewFieldOptions: React.FC<IViewFieldOptions> = memo(props => {
+export const ViewFieldOptions: React.FC<React.PropsWithChildren<IViewFieldOptions>> = memo(props => {
   const colors = useThemeColors();
   const { onChange, isAddNewOption, defaultFieldId, existFieldIds, invalidFieldIds = [], invalidTip, isCryptoField, fieldNotFound } = props;
   const currentViewAllField = useSelector(state => Selectors.getCurrentView(state))!.columns;
@@ -48,12 +49,13 @@ export const ViewFieldOptions: React.FC<IViewFieldOptions> = memo(props => {
   const fieldPermissionMap = useSelector(state => {
     return Selectors.getFieldPermissionMap(state);
   });
+  const isViewLock = useShowViewLockModal();
 
   function optionSelect(targetId: string) {
     onChange(targetId);
   }
 
-  function toggleClick(e: React.MouseEvent) {
+  function toggleClick() {
     setIsOpen(!isOpen);
   }
 
@@ -67,7 +69,7 @@ export const ViewFieldOptions: React.FC<IViewFieldOptions> = memo(props => {
     return true;
   }
 
-  const getSuffixIcon = (fieldId: string, isFieldInvalid) => {
+  const getSuffixIcon = (fieldId: string, isFieldInvalid: boolean) => {
     if (fieldPermissionMap && fieldPermissionMap[fieldId]) {
       return <FieldPermissionLock fieldId={fieldId} />;
     }
@@ -148,6 +150,9 @@ export const ViewFieldOptions: React.FC<IViewFieldOptions> = memo(props => {
         hideSelectedOption
         openSearch
         searchPlaceholder={t(Strings.search)}
+        noDataTip={t(Strings.no_search_result)}
+        disabled={isViewLock}
+        disabledTip={t(Strings.view_lock_setting_desc)}
       />
     </div>
   );

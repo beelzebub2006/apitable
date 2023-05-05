@@ -20,13 +20,14 @@
 
 // Redis keys
 export enum CacheKeys {
-  SOCKET = 'vikadata:nest:socket:%s',
-  ROOM_RELATE = 'vikadata:nest:room:%s',
-  RESOURCE_RELATE = 'vikadata:nest:resource:%s',
-  DATASHEET_FIELD_REF = 'vikadata:nest:fieldRef:%s',
-  DATASHEET_FIELD_RE_REF = 'vikadata:nest:fieldReRef:%s',
-  DATASHEET_REVISION_CACHE = 'vikadata:nest:datasheetCacheRevision:%s',
-  DATASHEET_PACK_CACHE = 'vikadata:nest:datasheetCache:%s',
+  SOCKET = 'apitable:nest:socket:%s',
+  ROOM_RELATE = 'apitable:nest:room:%s',
+  RESOURCE_RELATE = 'apitable:nest:resource:%s',
+  DATASHEET_FIELD_REF = 'apitable:nest:fieldRef:%s',
+  DATASHEET_FIELD_RE_REF = 'apitable:nest:fieldReRef:%s',
+  DATASHEET_REVISION_CACHE = 'apitable:nest:datasheetCacheRevision:%s',
+  DATASHEET_PACK_CACHE = 'apitable:nest:datasheetCache:%s',
+  DATASHEET_CASCADER_TREE = 'apitable:nest:datasheetCascaderCache:%s:%s'
 }
 
 // Redis expire time, units are in seconds
@@ -91,14 +92,24 @@ export const DATASHEET_ENRICH_SELECT_FIELD = 'datasheet-enrich-select-field';
 export const REQUEST_HOOK_FOLDER = 'request-hook-folder';
 export const REQUEST_HOOK_PRE_NODE = 'request-hook-pre-node';
 export const DATASHEET_MEMBER_FIELD = 'datasheet-member-field';
+
+/**
+ * gRPC MetaData Constant Key
+ */
+export const CHANGESETS_MESSAGE_ID = 'x-changesets-message-id';
+export const CHANGESETS_CMD = 'x-changesets-cmd';
+
 /**
  * custom cache headers
  */
 export const X_MAX_AGE = 'x-max-age';
+
 /**
  * default value of the `max-age` property of the API cache, units are seconds
  */
 export const DEFAULT_X_MAX_AGE = parseInt(process.env.DEFAULT_X_MAX_AGE!, 10) || 24 * 60 * 60;
+
+export const USE_NATIVE_MODULE = Boolean(process.env.USE_NATIVE_MODULE);
 
 /**
  * API Cache prefix
@@ -132,21 +143,6 @@ export const SOCKET_GRPC_CLIENT = 'SOCKET_GRPC_CLIENT';
 
 // 100M
 export const GRPC_MAX_PACKAGE_SIZE = 1024 * 1024 * 100;
-
-export const VIKA_NEST_CHANNEL = 'vikadata:nest:' + process.env.WEB_SOCKET_CHANNEL_ENV;
-
-/*
- * application type, could be one of the following
- */
-export type ApplicationType =
-/** full functionality（default） */
-  | 'ROOM_SERVER'
-  /** fusion API only */
-  | 'FUSION_SERVER'
-  /** rest API only */
-  | 'NEST_REST_SERVER';
-
-export const APPLICATION_NAME: ApplicationType = (process.env.APPLICATION_NAME || 'ROOM_SERVER') as ApplicationType;
 
 export class EnvConfigKey {
   public static readonly CONST = 'const';

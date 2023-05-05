@@ -18,8 +18,6 @@
 
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserRepository } from 'user/repositories/user.repository';
-import { UserService } from 'user/services/user.service';
 import { RobotActionController } from './controller/action.controller';
 import { RobotActionTypeController } from './controller/action.type.controller';
 import { AutomationActionRepository } from './repositories/automation.action.repository';
@@ -31,7 +29,6 @@ import { AutomationTriggerRepository } from './repositories/automation.trigger.r
 import { AutomationTriggerTypeRepository } from './repositories/automation.trigger.type.repository';
 import { RobotController } from './controller/robot.controller';
 import { RobotRunHistoryController } from './controller/run.history.controller';
-import { RobotServiceController } from './controller/service.controller';
 import { AutomationService } from './services/automation.service';
 import { RobotTriggerController } from './controller/trigger.controller';
 import { RobotTriggerTypeController } from './controller/trigger.type.controller';
@@ -42,8 +39,10 @@ import { FormSubmittedListener } from './events/listeners/form.submitted.listene
 import { TriggerEventHelper } from './events/helpers/trigger.event.helper';
 import { RecordCreatedListener } from './events/listeners/record.created.listener';
 import { RecordUpdatedListener } from './events/listeners/record.updated.listener';
-import { RobotServiceService } from './services/robot.service.service';
 import { NodeModule } from 'node/node.module';
+import { UserModule } from 'user/user.module';
+import { RobotActionService } from './services/robot.action.service';
+import { RobotRobotService } from './services/robot.robot.service';
 
 @Module({
   imports: [
@@ -55,10 +54,9 @@ import { NodeModule } from 'node/node.module';
       AutomationServiceRepository,
       AutomationTriggerTypeRepository,
       AutomationActionTypeRepository,
-      // TODO(Troy): stop using other modules's repositories, use service instead, via importing the module
-      UserRepository
     ]),
     NodeModule,
+    UserModule,
     RobotServiceDynamicModule.forRoot(),
   ],
   controllers: [
@@ -68,18 +66,17 @@ import { NodeModule } from 'node/node.module';
     RobotTriggerTypeController,
     RobotActionController,
     RobotTriggerController,
-    RobotServiceController,
   ],
   providers: [
     AutomationService,
     RobotTriggerService,
     RobotTriggerTypeService,
-    RobotServiceService,
-    UserService,
     FormSubmittedListener,
     TriggerEventHelper,
     RecordCreatedListener,
     RecordUpdatedListener,
+    RobotActionService,
+    RobotRobotService,
   ],
   exports: [
     AutomationService,
