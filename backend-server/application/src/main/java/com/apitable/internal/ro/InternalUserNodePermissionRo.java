@@ -1,4 +1,4 @@
-/**
+/*
  * APITable <https://github.com/apitable/apitable>
  * Copyright (C) 2022 APITable Ltd. <https://apitable.com>
  *
@@ -16,21 +16,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { IReduxState, Selectors } from 'exports/store';
-import { IViewInfo } from '../logic';
+package com.apitable.internal.ro;
 
-export const mockGetViewInfo = (dstId: string, viewId: string) => (state: IReduxState): IViewInfo | null => {
-  const snapshot = Selectors.getSnapshot(state, dstId)!;
-  const view = snapshot.meta.views.find(view => view.id === viewId);
-  if (view) {
-    return {
-      id: viewId,
-      type: view.type,
-      name: view.name,
-      rows: view.rows,
-      columns: view.columns,
-      fieldMap: snapshot.meta.fieldMap,
-    };
-  }
-  return null;
-};
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
+import lombok.Data;
+
+/**
+ * Internal User Node Permission Ro.
+ */
+@Data
+@Schema(description = "Internal Interface - User's Node Permission Request Parameters")
+public class InternalUserNodePermissionRo {
+
+    @Schema(description = "User Id List", requiredMode = Schema.RequiredMode.REQUIRED,
+        example = "[\"132143242\", \"4324242\"]")
+    private List<String> userIds;
+}

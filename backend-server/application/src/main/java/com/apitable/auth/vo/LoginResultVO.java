@@ -1,4 +1,4 @@
-/**
+/*
  * APITable <https://github.com/apitable/apitable>
  * Copyright (C) 2022 APITable Ltd. <https://apitable.com>
  *
@@ -16,18 +16,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { IDashboardSnapshot, IWidgetMap } from '@apitable/core';
-import { NodeInfo } from './node.model';
+package com.apitable.auth.vo;
 
-export class DashboardSnapshot {
-  snapshot!: IDashboardSnapshot;
-}
+import com.apitable.shared.support.serializer.NullBooleanSerializer;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
+import lombok.Data;
 
-export type DashboardData = NodeInfo & DashboardSnapshot;
+/**
+ * <p>
+ * Login result VO.
+ * </p>
+ *
+ * @author Chambers
+ */
+@Data
+@Builder(toBuilder = true)
+@Schema(description = "Login result VO")
+public class LoginResultVO {
 
-export type WidgetMap = IWidgetMap;
+    @JsonIgnore
+    private Long userId;
 
-export class DashboardDataPack {
-  dashboard!: DashboardData;
-  widgetMap!: WidgetMap;
+    @Schema(description = "User registration sign", example = "true")
+    @JsonSerialize(nullsUsing = NullBooleanSerializer.class)
+    private Boolean isNewUser;
 }
